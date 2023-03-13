@@ -39,6 +39,9 @@ module caliptra_verilated (
 
     input bit [7:0][31:0]           cptra_obf_key,
 
+    input bit [3:0] itrng_data,
+    input bit itrng_valid,
+
     output bit ready_for_fuses,
     output bit ready_for_fw_push,
 
@@ -46,6 +49,7 @@ module caliptra_verilated (
     output bit pslverr,
     output bit [`CALIPTRA_APB_DATA_WIDTH-1:0] prdata,
 
+    output bit etrng_req,
 
     output bit generic_load_en,
     output bit [31:0] generic_load_data
@@ -147,7 +151,10 @@ caliptra_top caliptra_top_dut (
     //FIXME: export these
     .cptra_error_fatal(),
     .cptra_error_non_fatal(),
-    .trng_req(),
+
+    .itrng_data(itrng_data),
+    .itrng_valid(itrng_valid),
+    .etrng_req(etrng_req),
 
     .security_state(security_state) //FIXME TIE-OFF
 );

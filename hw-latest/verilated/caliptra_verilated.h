@@ -26,6 +26,10 @@ struct caliptra_verilated_sig_in {
   bool imem_we;
   uint32_t imem_addr;
   uint64_t imem_wdata;
+
+  // Only bottom 4 bits are valid
+  uint8_t itrng_data;
+  bool itrng_valid;
 };
 
 struct caliptra_verilated_sig_out {
@@ -38,6 +42,7 @@ struct caliptra_verilated_sig_out {
 
   bool generic_load_en;
   uint32_t generic_load_data;
+  bool etrng_req;
 };
 
 // Constructs a new model. Model must eventually be destroyed with
