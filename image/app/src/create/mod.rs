@@ -18,6 +18,8 @@ mod executable;
 
 use anyhow::Context;
 use caliptra_image_gen::*;
+use caliptra_image_openssl::ecc_priv_key_from_pem;
+use caliptra_image_openssl::ecc_pub_key_from_pem;
 use caliptra_image_serde::ImageBundleWriter;
 use caliptra_image_types::*;
 use clap::ArgMatches;
@@ -25,10 +27,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use config::{OwnerKeyConfig, VendorKeyConfig};
-use crypto::OsslCrypto;
 use executable::ElfExecutable;
-
-use self::crypto::{ecc_priv_key_from_pem, ecc_pub_key_from_pem};
 
 /// Run the command
 pub(crate) fn run_cmd(args: &ArgMatches) -> anyhow::Result<()> {
@@ -105,7 +104,7 @@ pub(crate) fn run_cmd(args: &ArgMatches) -> anyhow::Result<()> {
         runtime,
     };
 
-    let gen = ImageGenerator::new(OsslCrypto::default());
+    let gen = ImageGenerator::new(caliptra_image_openssl::OsslCrypto::default());
     let image = gen.generate(&gen_config).unwrap();
 
     let out_file = std::fs::OpenOptions::new()
