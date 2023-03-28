@@ -130,6 +130,7 @@ pub fn elf2rom(elf_bytes: &[u8]) -> io::Result<Vec<u8>> {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
 
     #[test]
