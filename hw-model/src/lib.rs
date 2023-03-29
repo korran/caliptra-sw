@@ -55,6 +55,7 @@ pub struct InitParams<'a> {
     pub iccm: &'a [u8],
 }
 
+#[derive(Debug)]
 pub enum ModelError {
     MailboxErr,
     NotReadyForFwErr,
@@ -93,6 +94,8 @@ pub trait HwModel {
             self.step();
         }
     }
+
+    fn ready_for_fw(&self) -> bool;
 
     fn copy_output_until_exit_success(
         &mut self,
@@ -156,14 +159,21 @@ pub trait HwModel {
 
     /// Upload firmware to the mailbox.
     fn upload_firmware(&mut self, firmware: &Vec<u8>) -> Result<(), ModelError> {
+        const MAX_WAIT_CYCLES: u32 = 10000;
+
         if self.soc_mbox().lock().read().lock() {
             return Err(ModelError::MailboxErr);
         }
         if !self.soc_mbox().lock().read().lock() {
             return Err(ModelError::MailboxErr);
         }
-        #[cfg(feature = "verilator")]
-        if !self.soc_ifc().cptra_flow_status().read().ready_for_fw() {
+
+        let mut remaining_wait_cycles = 10000;
+        self.step_until(|hw| {
+            remaining_wait_cycles -= 1;
+            hw.ready_for_fw() || remaining_wait_cycles == 0
+        });
+        if remaining_wait_cycles == 0 {
             return Err(ModelError::NotReadyForFwErr);
         }
 

@@ -10,7 +10,7 @@ use caliptra_image_gen::{
     ImageGenerator, ImageGeneratorConfig, ImageGeneratorOwnerConfig, ImageGeneratorVendorConfig,
 };
 use caliptra_image_openssl::OsslCrypto;
-use caliptra_image_types::ImageRevision;
+use caliptra_image_types::{ImageRevision, ImageBundle};
 use elf::endian::LittleEndian;
 
 mod elf_symbols;
@@ -224,7 +224,7 @@ fn image_revision_from_str(commit_id_str: &str, is_clean: bool) -> io::Result<Im
     const DIRTY_SUFFIX: [u8; 10] = [0xd1, 0x47, 0xd1, 0x47, 0xd1, 0x47, 0xd1, 0x47, 0xd1, 0x47];
 
     let mut commit_id = ImageRevision::default();
-    hex::decode_to_slice(commit_id_str, &mut commit_id).map_err(|e| {
+    hex::decode_to_slice(commit_id_str.trim(), &mut commit_id).map_err(|e| {
         other_err(format!(
             "Unable to decode git commit {commit_id_str:?}: {e}"
         ))
@@ -263,6 +263,13 @@ mod test {
     fn test_image_revision_from_str() {
         assert_eq!(
             image_revision_from_str("d6a462a63a9cf2dafa5bbc6cf78b1fccc308009a", true).unwrap(),
+            [
+                0xd6, 0xa4, 0x62, 0xa6, 0x3a, 0x9c, 0xf2, 0xda, 0xfa, 0x5b, 0xbc, 0x6c, 0xf7, 0x8b,
+                0x1f, 0xcc, 0xc3, 0x08, 0x00, 0x9a
+            ]
+        );
+        assert_eq!(
+            image_revision_from_str("d6a462a63a9cf2dafa5bbc6cf78b1fccc308009a\n", true).unwrap(),
             [
                 0xd6, 0xa4, 0x62, 0xa6, 0x3a, 0x9c, 0xf2, 0xda, 0xfa, 0x5b, 0xbc, 0x6c, 0xf7, 0x8b,
                 0x1f, 0xcc, 0xc3, 0x08, 0x00, 0x9a
