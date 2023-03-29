@@ -807,12 +807,10 @@ impl SocRegistersImpl {
         if size != RvSize::Word {
             Err(BusError::StoreAccessFault)?
         }
-        println!("on_write_flow_status");
 
         // Set the flow status register.
         self.cptra_flow_status.reg.set(val);
 
-        println!("step1");
 
         // If ready_for_fw bit is set, upload the firmware image to the mailbox.
         if self.cptra_flow_status.reg.is_set(FlowStatus::READY_FOR_FW) {

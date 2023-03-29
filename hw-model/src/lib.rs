@@ -174,7 +174,7 @@ pub trait HwModel {
 
     /// Upload firmware to the mailbox.
     fn upload_firmware(&mut self, firmware: &Vec<u8>) -> Result<(), ModelError> {
-        const MAX_WAIT_CYCLES: u32 = 10000;
+        const MAX_WAIT_CYCLES: u32 = 600000;
 
         if self.soc_mbox().lock().read().lock() {
             return Err(ModelError::MailboxErr);
@@ -183,15 +183,15 @@ pub trait HwModel {
             return Err(ModelError::MailboxErr);
         }
 
-        let mut remaining_wait_cycles = 1000000;
+        let mut wait_cycles = 0;
         self.step_until(|hw| {
-            remaining_wait_cycles -= 1;
-            hw.ready_for_fw() || remaining_wait_cycles == 0
+            wait_cycles += 1;
+            hw.ready_for_fw() || wait_cycles >= MAX_WAIT_CYCLES
         });
-        if remaining_wait_cycles == 0 {
+        if wait_cycles >= MAX_WAIT_CYCLES {
             return Err(ModelError::NotReadyForFwErr);
         }
-        println!("ready for fw");
+        println!("Received ready_for_fw signal after {wait_cycles} cycles");
 
         self.soc_mbox().cmd().write(|_| FW_LOAD_CMD_OPCODE);
 

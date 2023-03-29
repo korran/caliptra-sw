@@ -14,6 +14,9 @@ fn smoke_test() {
         ..Default::default()
     }).unwrap();
     hw.upload_firmware(&image).unwrap();
-    //hw.step_until_exit_success().unwrap();
+    let mut full_output = vec![];
+    hw.copy_output_until_exit_success(&mut full_output).unwrap();
+    let full_output = String::from_utf8_lossy(&full_output);
+    
 }
 

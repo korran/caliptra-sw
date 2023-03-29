@@ -6,11 +6,9 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
-use std::io::LineWriter;
 use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::mpsc;
 
 use caliptra_emu_bus::Clock;
 use caliptra_emu_cpu::Cpu;
@@ -148,10 +146,8 @@ impl<TBus: Bus> Bus for BusLogger<TBus> {
 pub struct ModelEmulated {
     cpu: Cpu<BusLogger<CaliptraRootBus>>,
     output: Output,
-    generic_load_rx: mpsc::Receiver<u8>,
     trace_fn: Option<Box<InstrTracer<'static>>>,
     ready_for_fw: Rc<Cell<bool>>,
-    log_writer: Rc<RefCell<LineWriter<Box<dyn Write>>>>,
 }
 
 impl crate::HwModel for ModelEmulated {
@@ -161,27 +157,19 @@ impl crate::HwModel for ModelEmulated {
     where
         Self: Sized,
     {
-        const UART_LOG_PREFIX: &[u8] = b"UART: ";
-
-        let (generic_load_tx, generic_load_rx) = mpsc::channel();
         let clock = Clock::new();
 
         let ready_for_fw = Rc::new(Cell::new(false));
         let ready_for_fw_clone = ready_for_fw.clone();
+        
+        let output = Output::new(params.log_writer);
 
-        let log_writer = Rc::new(RefCell::new(LineWriter::new(params.log_writer)));
-        let log_writer_clone = log_writer.clone();
+        let output_sink = output.sink().clone();
 
         let bus_args = CaliptraRootBusArgs {
             rom: params.rom.into(),
             tb_services_cb: TbServicesCb(Box::new(move |ch| {
-                let _ = generic_load_tx.send(ch);
-                let mut log_writer = log_writer_clone.borrow_mut();
-                log_writer.write_all(&[ch]).unwrap();
-                if ch == b'\n' {
-                    log_writer.flush().unwrap();
-                    log_writer.write_all(UART_LOG_PREFIX).unwrap();
-                }
+                output_sink.push_uart_char(ch);
             })),
             ready_for_fw_cb: ReadyForFwCb(Box::new(move |_| {
                 ready_for_fw_clone.set(true);
@@ -194,12 +182,10 @@ impl crate::HwModel for ModelEmulated {
         );
 
         let mut m = ModelEmulated {
-            generic_load_rx,
-            output: Output::new(),
+            output,
             cpu,
             trace_fn: None,
             ready_for_fw,
-            log_writer,
         };
         // Turn tracing on if CPTRA_TRACE_PATH environment variable is set
         m.tracing_hint(true);
@@ -219,10 +205,6 @@ impl crate::HwModel for ModelEmulated {
     }
 
     fn output(&mut self) -> &mut Output {
-        // Make sure output contains all the latest generic loads from the verilator model
-        while let Ok(ch) = self.generic_load_rx.try_recv() {
-            self.output.process_generic_load(ch)
-        }
         &mut self.output
     }
 
