@@ -1,7 +1,5 @@
 // Licensed under the Apache-2.0 license
 
-use std::sync::mpsc;
-
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
 use caliptra_verilated::CaliptraVerilated;
@@ -43,10 +41,8 @@ impl<'a> Bus for VerilatedApbBus<'a> {
 pub struct ModelVerilated {
     v: CaliptraVerilated,
 
-    generic_load_rx: mpsc::Receiver<u8>,
     output: Output,
     trace_enabled: bool,
-    log_writer: LineWriter<Box<dyn Write>>,
 }
 
 impl ModelVerilated {
@@ -65,9 +61,12 @@ impl crate::HwModel for ModelVerilated {
     where
         Self: Sized,
     {
-        let (generic_load_tx, generic_load_rx) = mpsc::channel();
+
+        let output = Output::new(params.log_writer);
+
+        let output_sink = output.sink().clone();
         let generic_load_cb = Box::new(move |ch| {
-            let _ = generic_load_tx.send(ch);
+            output_sink.push_uart_char(ch);
         });
         let mut v = CaliptraVerilated::with_generic_load_cb(generic_load_cb);
 
@@ -75,8 +74,7 @@ impl crate::HwModel for ModelVerilated {
 
         let mut m = ModelVerilated {
             v,
-            generic_load_rx,
-            output: Output::new(),
+            output,
             trace_enabled: false,
         };
 
@@ -110,12 +108,11 @@ impl crate::HwModel for ModelVerilated {
     }
 
     fn output(&mut self) -> &mut crate::Output {
-        // Make sure output contains all the latest generic loads from the verilator model
-        while let Ok(ch) = self.generic_load_rx.try_recv() {
-            self.output.process_generic_load(ch)
-        }
-
         &mut self.output
+    }
+
+    fn ready_for_fw(&self) -> bool {
+        self.v.output.ready_for_fw_push
     }
 
     fn tracing_hint(&mut self, enable: bool) {
