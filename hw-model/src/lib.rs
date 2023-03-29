@@ -1,6 +1,6 @@
 // Licensed under the Apache-2.0 license
 
-use std::{error::Error, io::ErrorKind};
+use std::{error::Error, io::{ErrorKind, stdout}};
 
 use caliptra_emu_bus::Bus;
 
@@ -43,7 +43,6 @@ pub fn create(params: InitParams) -> Result<ModelVerilated, Box<dyn Error>> {
     ModelVerilated::init(params)
 }
 
-#[derive(Default)]
 pub struct InitParams<'a> {
     // The contents of the boot ROM
     pub rom: &'a [u8],
@@ -53,6 +52,18 @@ pub struct InitParams<'a> {
 
     // The initial contents of the ICCM SRAM
     pub iccm: &'a [u8],
+
+    pub log_writer: Box<dyn std::io::Write>,
+}
+impl<'a> Default for InitParams<'a> {
+    fn default() -> Self {
+        Self { 
+            rom: Default::default(), 
+            dccm: Default::default(), 
+            iccm: Default::default(), 
+            log_writer: Box::new(stdout()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -96,6 +107,10 @@ pub trait HwModel {
     }
 
     fn ready_for_fw(&self) -> bool;
+
+    fn step_until_exit_success(&mut self) -> std::io::Result<()> {
+        self.copy_output_until_exit_success(std::io::Sink::default())
+    }
 
     fn copy_output_until_exit_success(
         &mut self,
@@ -168,7 +183,7 @@ pub trait HwModel {
             return Err(ModelError::MailboxErr);
         }
 
-        let mut remaining_wait_cycles = 10000;
+        let mut remaining_wait_cycles = 1000000;
         self.step_until(|hw| {
             remaining_wait_cycles -= 1;
             hw.ready_for_fw() || remaining_wait_cycles == 0
@@ -176,6 +191,7 @@ pub trait HwModel {
         if remaining_wait_cycles == 0 {
             return Err(ModelError::NotReadyForFwErr);
         }
+        println!("ready for fw");
 
         self.soc_mbox().cmd().write(|_| FW_LOAD_CMD_OPCODE);
 

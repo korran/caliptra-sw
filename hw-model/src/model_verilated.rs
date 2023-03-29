@@ -46,6 +46,7 @@ pub struct ModelVerilated {
     generic_load_rx: mpsc::Receiver<u8>,
     output: Output,
     trace_enabled: bool,
+    log_writer: LineWriter<Box<dyn Write>>,
 }
 
 impl ModelVerilated {
