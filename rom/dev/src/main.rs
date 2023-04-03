@@ -72,10 +72,10 @@ pub extern "C" fn rom_entry() -> ! {
             .map(|d| if d.debug_locked() { "Yes" } else { "No" })
     );
 
-    let result = kat::execute_kat(&env);
-    if let Err(err) = result {
-        report_error(err);
-    }
+    //let result = kat::execute_kat(&env);
+    //if let Err(err) = result {
+    //    report_error(err);
+    //}
 
     let result = flow::run(&env);
     match result {
