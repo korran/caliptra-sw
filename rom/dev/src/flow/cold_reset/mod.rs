@@ -46,10 +46,11 @@ impl ColdResetFlow {
         cprintln!("[cold-reset] ++");
 
         // Compose the three dice layers into one function
-        let dice_fn = compose_layers(
-            InitDevIdLayer::derive,
-            compose_layers(LocalDevIdLayer::derive, FmcAliasLayer::derive),
-        );
+        //let dice_fn = compose_layers(
+        //    InitDevIdLayer::derive,
+        //    compose_layers(LocalDevIdLayer::derive, FmcAliasLayer::derive),
+        //);
+        let dice_fn = FmcAliasLayer::derive;
 
         // Create initial output
         let input = DiceInput {
