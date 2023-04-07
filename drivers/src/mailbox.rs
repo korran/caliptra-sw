@@ -272,7 +272,7 @@ impl MailboxRecvTxn {
     fn dequeue(&self, buf: &mut [u32]) -> CaliptraResult<()> {
         let mbox = mbox::RegisterBlock::mbox_csr();
         let dlen_words = mbox.dlen().read() as usize / 4;
-        for i in 0.. min(buf.len(), dlen_words) {
+        for i in 0..min(buf.len(), dlen_words) {
             buf[i] = mbox.dataout().read();
         }
         Ok(())

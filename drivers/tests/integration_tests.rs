@@ -88,4 +88,7 @@ fn test_memory() {
     run_driver_test("memory");
 }
 
-
+#[test]
+fn test_datavault() {
+    run_driver_test("datavault");
+}

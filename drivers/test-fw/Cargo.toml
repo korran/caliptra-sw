@@ -91,3 +91,15 @@ required-features = ["riscv"]
 name = "test_failure"
 path = "src/bin/test_failure.rs"
 required-features = ["riscv"]
+
+[[bin]]
+name = "memory"
+path = "src/bin/memory_tests.rs"
+required-features = ["riscv"]
+
+[[bin]]
+name = "datavault"
+path = "src/bin/datavault_tests.rs"
+required-features = ["riscv"]
+
+
