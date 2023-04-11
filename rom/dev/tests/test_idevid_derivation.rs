@@ -4,6 +4,7 @@ use caliptra_builder::ImageOptions;
 use caliptra_drivers::{state::MfgFlags, IdevidCertAttr, X509KeyIdAlgo};
 //use caliptra_drivers::{state::MfgFlags, IdevidCertAttr, X509KeyIdAlgo};
 use caliptra_hw_model::{Fuses, HwModel};
+use std::io::Write;
 
 mod helpers;
 
@@ -36,16 +37,20 @@ fn test_generate_csr() {
     hw.upload_firmware(&image_bundle.to_bytes().unwrap())
         .unwrap();
 
-    let result = hw.copy_output_until_exit_success(&mut output);
-    assert!(result.is_ok());
+    // Step until runtime firmware denotes successful firmware upload
+    hw.output()
+        .set_search_term("Caliptra RT listening for mailbox commands...");
+    hw.step_until(|m| m.output().search_matched());
 
+    output
+        .write_all(hw.output().take(usize::MAX).as_bytes())
+        .unwrap();
     let output = String::from_utf8_lossy(&output);
     assert_output_contains(&output, "[idev] CSR uploaded");
 }
 
 #[test]
 fn test_idev_subj_key_id_algo() {
-    let mut output = vec![];
     for algo in 0..(X509KeyIdAlgo::Fuse as u32 + 1) {
         let mut fuses = Fuses::default();
         fuses.idevid_cert_attr[IdevidCertAttr::Flags as usize] = algo;
@@ -55,7 +60,9 @@ fn test_idev_subj_key_id_algo() {
         hw.upload_firmware(&image_bundle.to_bytes().unwrap())
             .unwrap();
 
-        let result = hw.copy_output_until_exit_success(&mut output);
-        assert!(result.is_ok());
+        // Step until runtime firmware denotes successful firmware upload
+        hw.output()
+            .set_search_term("Caliptra RT listening for mailbox commands...");
+        hw.step_until(|m| m.output().search_matched());
     }
 }
