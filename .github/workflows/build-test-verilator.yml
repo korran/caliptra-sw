@@ -22,7 +22,8 @@ jobs:
       SCCACHE_GHA_CACHE_TO: sccache-verilator-10000
       SCCACHE_GHA_CACHE_FROM: sccache-verilator-
       # Change this to a new random value if you suspect the cache is corrupted
-      SCCACHE_C_CUSTOM_CACHE_BUSTER: f3e6951f0c1d
+      SCCACHE_C_CUSTOM_CACHE_BUSTER: 119acbfab596
+      CARGO_CACHE_BUSTER: 119acbfab596
 
     steps:
       - uses: actions/checkout@v3

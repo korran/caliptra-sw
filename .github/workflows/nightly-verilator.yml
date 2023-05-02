@@ -17,7 +17,8 @@ jobs:
       VERILATOR_VERSION: v5.006
       PKG_CONFIG_PATH: /opt/verilator/share/pkgconfig
         # Change this to a new random value if you suspect the cache is corrupted
-      CACHE_BUSTER: 29334de42083
+      CACHE_BUSTER: f18491c6e6af
+      CARGO_CACHE_BUSTER: f18491c6e6af
 
     steps:
       - uses: actions/checkout@v3
