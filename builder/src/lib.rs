@@ -113,8 +113,7 @@ pub fn build_firmware_elf(id: &FwId) -> io::Result<Vec<u8>> {
 
     run_cmd(
         Command::new(env!("CARGO"))
-            // sccache doesn't cache target specs, so don't use it when building firmware.
-            .env_remove("RUSTC_WRAPPER")
+            .env_clear()
             .current_dir(WORKSPACE_DIR)
             .arg("build")
             .arg("--quiet")
