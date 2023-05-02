@@ -113,7 +113,7 @@ pub fn build_firmware_elf(id: &FwId) -> io::Result<Vec<u8>> {
 
     run_cmd(
         Command::new(env!("CARGO"))
-            .env_clear()
+            .env_remove("RUSTFLAGS")
             .current_dir(WORKSPACE_DIR)
             .arg("build")
             .arg("--quiet")
