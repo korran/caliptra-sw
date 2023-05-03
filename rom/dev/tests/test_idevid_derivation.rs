@@ -37,10 +37,8 @@ fn test_generate_csr() {
     hw.upload_firmware(&image_bundle.to_bytes().unwrap())
         .unwrap();
 
-    // Step until runtime firmware denotes successful firmware upload
-    hw.output()
-        .set_search_term("Caliptra RT listening for mailbox commands...");
-    hw.step_until(|m| m.output().search_matched());
+    hw.step_until_output_contains("Caliptra RT listening for mailbox commands...")
+        .unwrap();
 
     output
         .write_all(hw.output().take(usize::MAX).as_bytes())
@@ -60,9 +58,7 @@ fn test_idev_subj_key_id_algo() {
         hw.upload_firmware(&image_bundle.to_bytes().unwrap())
             .unwrap();
 
-        // Step until runtime firmware denotes successful firmware upload
-        hw.output()
-            .set_search_term("Caliptra RT listening for mailbox commands...");
-        hw.step_until(|m| m.output().search_matched());
+        hw.step_until_output_contains("Caliptra RT listening for mailbox commands...")
+            .unwrap();
     }
 }

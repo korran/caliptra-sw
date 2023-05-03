@@ -102,11 +102,9 @@ fn test_standard() {
     // via the mailbox.
     let mut model = run_rt_test(None);
 
-    // Step until runtime firmware denotes successful firmware upload
     model
-        .output()
-        .set_search_term("Caliptra RT listening for mailbox commands...");
-    model.step_until(|m| m.output().search_matched());
+        .step_until_output_contains("Caliptra RT listening for mailbox commands...")
+        .unwrap();
 }
 
 #[test]
