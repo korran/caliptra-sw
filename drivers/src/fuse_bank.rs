@@ -13,16 +13,10 @@ Abstract:
 --*/
 
 use crate::Array4x12;
-use caliptra_registers::soc_ifc;
+use caliptra_registers::soc_ifc::SocIfcReg;
 
-pub struct FuseBank {
-    // Don't allow other crates to create this directly
-    _priv: (),
-}
-impl FuseBank {
-    pub(crate) fn new() -> Self {
-        Self { _priv: () }
-    }
+pub struct FuseBank<'a> {
+    pub(crate) soc_ifc: &'a mut SocIfcReg,
 }
 
 pub enum X509KeyIdAlgo {
@@ -60,7 +54,7 @@ impl From<IdevidCertAttr> for usize {
     }
 }
 
-impl FuseBank {
+impl FuseBank<'_> {
     /// Get the key id crypto algorithm.
     ///
     /// # Arguments
@@ -69,8 +63,8 @@ impl FuseBank {
     /// # Returns
     ///     key id crypto algorithm  
     ///
-    pub fn idev_id_x509_key_id_algo(&self) -> X509KeyIdAlgo {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn idev_id_x509_key_id_algo(&mut self) -> X509KeyIdAlgo {
+        let soc_ifc_regs = self.soc_ifc.regs();
 
         let flags = soc_ifc_regs
             .fuse_idevid_cert_attr()
@@ -94,8 +88,8 @@ impl FuseBank {
     /// # Returns
     ///     manufacturer serial number  
     ///
-    pub fn ueid(&self) -> [u8; 8] {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn ueid(&mut self) -> [u8; 8] {
+        let soc_ifc_regs = self.soc_ifc.regs();
 
         let ueid1 = soc_ifc_regs
             .fuse_idevid_cert_attr()
@@ -121,8 +115,8 @@ impl FuseBank {
     /// # Returns
     ///     subject key identifier
     ///
-    pub fn subject_key_id(&self) -> [u8; 20] {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn subject_key_id(&mut self) -> [u8; 20] {
+        let soc_ifc_regs = self.soc_ifc.regs();
 
         let subkeyid1 = soc_ifc_regs
             .fuse_idevid_cert_attr()
@@ -163,8 +157,8 @@ impl FuseBank {
     /// # Returns
     ///     vendor public key hash
     ///
-    pub fn vendor_pub_key_hash(&self) -> Array4x12 {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn vendor_pub_key_hash(&mut self) -> Array4x12 {
+        let soc_ifc_regs = self.soc_ifc.regs();
         Array4x12::read_from_reg(soc_ifc_regs.fuse_key_manifest_pk_hash())
     }
 
@@ -176,8 +170,8 @@ impl FuseBank {
     /// # Returns
     ///     vendor public key revocation mask
     ///
-    pub fn vendor_pub_key_revocation(&self) -> VendorPubKeyRevocation {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn vendor_pub_key_revocation(&mut self) -> VendorPubKeyRevocation {
+        let soc_ifc_regs = self.soc_ifc.regs();
         VendorPubKeyRevocation::from_bits_truncate(
             soc_ifc_regs.fuse_key_manifest_pk_hash_mask().read().mask(),
         )
@@ -191,8 +185,8 @@ impl FuseBank {
     /// # Returns
     ///     owner public key hash
     ///
-    pub fn owner_pub_key_hash(&self) -> Array4x12 {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn owner_pub_key_hash(&mut self) -> Array4x12 {
+        let soc_ifc_regs = self.soc_ifc.regs();
         Array4x12::read_from_reg(soc_ifc_regs.fuse_owner_pk_hash())
     }
 
@@ -204,8 +198,8 @@ impl FuseBank {
     /// # Returns
     ///     rollback disability setting
     ///
-    pub fn anti_rollback_disable(&self) -> bool {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn anti_rollback_disable(&mut self) -> bool {
+        let soc_ifc_regs = self.soc_ifc.regs();
         soc_ifc_regs.fuse_anti_rollback_disable().read().dis()
     }
 
@@ -217,8 +211,8 @@ impl FuseBank {
     /// # Returns
     ///     fmc security version number
     ///
-    pub fn fmc_svn(&self) -> u32 {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn fmc_svn(&mut self) -> u32 {
+        let soc_ifc_regs = self.soc_ifc.regs();
         32 - soc_ifc_regs
             .fuse_fmc_key_manifest_svn()
             .read()
@@ -233,8 +227,8 @@ impl FuseBank {
     /// # Returns
     ///     runtime security version number
     ///
-    pub fn runtime_svn(&self) -> u32 {
-        let soc_ifc_regs = soc_ifc::RegisterBlock::soc_ifc_reg();
+    pub fn runtime_svn(&mut self) -> u32 {
+        let soc_ifc_regs = self.soc_ifc.regs();
         64 - ((soc_ifc_regs.fuse_runtime_svn().at(1).read() as u64) << 32
             | soc_ifc_regs.fuse_runtime_svn().at(0).read() as u64)
             .leading_zeros()

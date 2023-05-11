@@ -745,6 +745,7 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
     let mut block_tokens = TokenStream::new();
 
     let mut block_instance_tokens = TokenStream::new();
+    let mut instance_type_tokens = TokenStream::new();
 
     if !block.block().registers.is_empty() {
         let max_reg_width = block
@@ -757,11 +758,38 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
         let raw_ptr_type = format_ident!("{}", max_reg_width.rust_primitive_name());
 
         for instance in block.block().instances.iter() {
+            let name_camel = camel_ident(&instance.name);
             let name = snake_ident(&instance.name);
             let addr = hex_literal(instance.address.into());
-            // TODO: Should this be unsafe?
-            block_instance_tokens.extend(quote! {
-                pub fn #name() -> Self { unsafe { Self::new(#addr as *mut #raw_ptr_type) } }
+            //block_instance_tokens.extend(quote! {
+            //    pub unsafe fn #name() -> Self { unsafe { Self::new(#addr as *mut #raw_ptr_type) } }
+            //});
+            instance_type_tokens.extend(quote! {
+                pub struct #name_camel {
+                    // Ensure the only way to create this is via Self::new()
+                    _priv: (),
+                }
+                impl #name_camel {
+                    pub const PTR: *mut #raw_ptr_type = #addr as *mut #raw_ptr_type;
+
+                    /// Safety
+                    ///
+                    /// Caller must ensure that only one instance of this type exists.
+                    pub unsafe fn new() -> Self {
+                        Self{
+                            _priv: (),
+                        }
+                    }
+
+                    pub fn regs(&mut self) -> RegisterBlock<'_> {
+                        RegisterBlock{
+                            ptr: Self::PTR,
+                            mmio: core::default::Default::default(),
+                            phantom: core::marker::PhantomData::default(),
+                        }
+                    }
+                }
+
             });
         }
         generate_block_registers(
@@ -806,14 +834,15 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
         }
         block_tokens = quote! {
             #[derive(Clone, Copy)]
-            pub struct RegisterBlock<TMmio: ureg::Mmio + core::borrow::Borrow<TMmio> = ureg::RealMmio>{
+            pub struct RegisterBlock<'a, TMmio: ureg::Mmio + core::borrow::Borrow<TMmio> = ureg::RealMmio>{
                 ptr: *mut #raw_ptr_type,
                 mmio: TMmio,
+                phantom: core::marker::PhantomData<&'a mut ()>,
             }
-            impl RegisterBlock<ureg::RealMmio> {
+            impl RegisterBlock<'_, ureg::RealMmio> {
                 #block_instance_tokens
             }
-            impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<TMmio> {
+            impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<'static, TMmio> {
                 /// # Safety
                 ///
                 /// The caller is responsible for ensuring that ptr is valid for
@@ -823,10 +852,11 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
                     Self{
                         ptr,
                         mmio: core::default::Default::default(),
+                        phantom: core::marker::PhantomData::default(),
                     }
                 }
             }
-            impl<TMmio: ureg::Mmio> RegisterBlock<TMmio> {
+            impl<TMmio: ureg::Mmio> RegisterBlock<'_, TMmio> {
                 /// # Safety
                 ///
                 /// The caller is responsible for ensuring that ptr is valid for
@@ -836,6 +866,7 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
                     Self{
                         ptr,
                         mmio,
+                        phantom: core::marker::PhantomData::default(),
                     }
                 }
                 #block_inner_tokens
@@ -858,6 +889,8 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
         #block_tokens
 
         #subblock_type_tokens
+
+        #instance_type_tokens
 
         pub mod regs {
             //! Types that represent the values held by registers.

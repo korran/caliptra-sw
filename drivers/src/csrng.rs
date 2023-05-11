@@ -23,7 +23,7 @@ Abstract:
 --*/
 use crate::{caliptra_err_def, wait, CaliptraResult};
 use caliptra_registers::{
-    csrng,
+    csrng::{self, CsrngReg},
     entropy_src::{self, regs::AlertFailCountsReadVal},
 };
 use core::{iter::FusedIterator, marker::PhantomData, num::NonZeroUsize};
@@ -47,9 +47,8 @@ const WORDS_PER_GENERATE_BLOCK: usize = 4;
 
 /// A unique handle to the underlying CSRNG peripheral.
 pub struct Csrng {
-    // Force API consumers to use one of the construct methods to properly seed
-    // the CSRNG.
-    _prevent_struct_expression: (),
+    csrng: caliptra_registers::csrng::CsrngReg,
+    entropy_src: caliptra_registers::entropy_src::EntropySrcReg,
 }
 
 impl Csrng {
@@ -64,8 +63,8 @@ impl Csrng {
     /// # Errors
     ///
     /// Returns an error if the internal seed command fails.
-    pub unsafe fn new() -> CaliptraResult<Self> {
-        Self::with_seed(Seed::EntropySrc)
+    pub fn new(csrng: caliptra_registers::csrng::CsrngReg, entropy_src: caliptra_registers::entropy_src::EntropySrcReg) -> CaliptraResult<Self> {
+        Self::with_seed(csrng, entropy_src, Seed::EntropySrc)
     }
 
     /// Returns a handle to the CSRNG configured to use the provided [`Seed`].
@@ -77,12 +76,18 @@ impl Csrng {
     /// # Errors
     ///
     /// Returns an error if the internal seed command fails.
-    pub unsafe fn with_seed(seed: Seed) -> CaliptraResult<Self> {
+    pub fn with_seed(csrng: caliptra_registers::csrng::CsrngReg, entropy_src: caliptra_registers::entropy_src::EntropySrcReg, seed: Seed) -> CaliptraResult<Self> {
         const FALSE: u32 = MultiBitBool::False as u32;
         const TRUE: u32 = MultiBitBool::True as u32;
 
         // Configure and enable entropy_src if needed.
-        let e = entropy_src::RegisterBlock::entropy_src_reg();
+
+        let mut result = Self {
+            csrng,
+            entropy_src,
+        };
+        let c = result.csrng.regs();
+        let e = result.entropy_src.regs();
 
         if e.module_enable().read().module_enable() == FALSE {
             e.conf()
@@ -91,18 +96,15 @@ impl Csrng {
             wait::until(|| e.debug_status().read().main_sm_boot_done());
         }
 
-        if registers().ctrl().read().enable() == FALSE {
-            registers()
-                .ctrl()
+        if c.ctrl().read().enable() == FALSE {
+           c.ctrl()
                 .write(|w| w.enable(TRUE).sw_app_enable(TRUE).read_int_state(TRUE));
         }
 
-        send_command(Command::Uninstantiate)?;
-        send_command(Command::Instantiate(seed))?;
+        send_command(&mut result.csrng, Command::Uninstantiate)?;
+        send_command(&mut result.csrng, Command::Instantiate(seed))?;
 
-        Ok(Self {
-            _prevent_struct_expression: (),
-        })
+        Ok(result)
     }
 
     /// Returns an iterator over `num_words` random [`u32`]s.
@@ -133,25 +135,25 @@ impl Csrng {
         let num_128_bit_blocks = (num_words.get() + 3) / 4;
         let num_words = num_128_bit_blocks * WORDS_PER_GENERATE_BLOCK;
 
-        send_command(Command::Generate { num_128_bit_blocks })?;
+        send_command(&mut self.csrng, Command::Generate { num_128_bit_blocks })?;
 
         Ok(Iter {
-            _prevent_csrng_mutation_while_iter_is_live: PhantomData,
+            csrng: &mut self.csrng,
             num_words_left: num_words,
         })
     }
 
     pub fn reseed(&mut self, seed: Seed) -> CaliptraResult<()> {
-        send_command(Command::Reseed(seed))
+        send_command(&mut self.csrng, Command::Reseed(seed))
     }
 
     pub fn update(&mut self, additional_data: &[u32]) -> CaliptraResult<()> {
-        send_command(Command::Update(additional_data))
+        send_command(&mut self.csrng, Command::Update(additional_data))
     }
 
     /// Returns the number of failing health checks.
-    pub fn health_counts(&self) -> HealthFailCounts {
-        let e = entropy_src::RegisterBlock::entropy_src_reg();
+    pub fn health_counts(&mut self) -> HealthFailCounts {
+        let e = self.entropy_src.regs();
 
         HealthFailCounts {
             total: e.alert_summary_fail_counts().read().any_fail_count(),
@@ -162,7 +164,7 @@ impl Csrng {
 
 impl Drop for Csrng {
     fn drop(&mut self) {
-        let _ = send_command(Command::Uninstantiate);
+        let _ = send_command(&mut self.csrng, Command::Uninstantiate);
     }
 }
 
@@ -199,7 +201,7 @@ pub struct Iter<'a> {
     // It's not clear what reseeding or updating the CSRNG state would do
     // to an existing generate request. Prevent these operations from happening
     // concurrent to this iterator's life.
-    _prevent_csrng_mutation_while_iter_is_live: PhantomData<&'a mut Csrng>,
+    csrng: &'a mut CsrngReg,
     num_words_left: usize,
 }
 
@@ -207,17 +209,18 @@ impl Iterator for Iter<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let csrng = self.csrng.regs();
         if self.num_words_left == 0 {
             None
         } else {
             if self.num_words_left % WORDS_PER_GENERATE_BLOCK == 0 {
                 // Wait for CSRNG to generate next block of 4 words.
-                wait::until(|| registers().genbits_vld().read().genbits_vld());
+                wait::until(|| csrng.genbits_vld().read().genbits_vld());
             }
 
             self.num_words_left -= 1;
 
-            Some(registers().genbits().read())
+            Some(csrng.genbits().read())
         }
     }
 }
@@ -250,11 +253,7 @@ pub struct HealthFailCounts {
     pub specific: AlertFailCountsReadVal,
 }
 
-fn registers() -> csrng::RegisterBlock {
-    csrng::RegisterBlock::csrng_reg()
-}
-
-fn send_command(command: Command) -> CaliptraResult<()> {
+fn send_command(csrng: &mut CsrngReg, command: Command) -> CaliptraResult<()> {
     // https://opentitan.org/book/hw/ip/csrng/doc/theory_of_operation.html#general-command-format
     let acmd: u32;
     let clen: usize;
@@ -322,20 +321,21 @@ fn send_command(command: Command) -> CaliptraResult<()> {
     let clen = (clen as u32) & 0xf;
     let flag0 = (flag0 as u32) & 0xf;
     let glen = (glen as u32) & 0x1fff;
+    
 
     // Write mandatory 32-bit command header.
-    registers()
+    csrng.regs()
         .cmd_req()
         .write(|_| (glen << 12) | (flag0 << 8) | (clen << 4) | acmd);
 
     // Write optional extra words.
     for &word in extra_words {
-        registers().cmd_req().write(|_| word);
+        csrng.regs().cmd_req().write(|_| word);
     }
 
     // Wait for command.
     loop {
-        let reg = registers().sw_cmd_sts().read();
+        let reg = csrng.regs().sw_cmd_sts().read();
 
         // Order matters. Check for errors first.
         if reg.cmd_sts() {

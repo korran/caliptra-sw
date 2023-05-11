@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use caliptra_registers::dv;
+use caliptra_registers::dv::{self, DvReg};
 
 use crate::{Array4x12, Ecc384PubKey, Ecc384Signature};
 
@@ -178,10 +178,17 @@ impl TryFrom<u8> for WarmResetEntry48 {
     }
 }
 
-#[derive(Default, Debug)]
-pub struct DataVault {}
+pub struct DataVault {
+    dv: DvReg,
+}
 
 impl DataVault {
+    pub fn new(dv: DvReg) -> Self {
+        Self { 
+            dv,
+        }
+         
+    }
     /// Set the ldev dice signature.
     ///
     /// # Arguments
@@ -200,7 +207,7 @@ impl DataVault {
     /// # Returns
     ///     ldev dice signature  
     ///
-    pub fn ldev_dice_signature(&self) -> Ecc384Signature {
+    pub fn ldev_dice_signature(&mut self) -> Ecc384Signature {
         Ecc384Signature {
             r: self.read_cold_reset_entry48(ColdResetEntry48::LDevDiceSigR),
             s: self.read_cold_reset_entry48(ColdResetEntry48::LDevDiceSigS),
@@ -222,7 +229,7 @@ impl DataVault {
     /// # Returns
     /// * ldev dice public key
     ///
-    pub fn ldev_dice_pub_key(&self) -> Ecc384PubKey {
+    pub fn ldev_dice_pub_key(&mut self) -> Ecc384PubKey {
         Ecc384PubKey {
             x: self.read_cold_reset_entry48(ColdResetEntry48::LDevDicePubKeyX),
             y: self.read_cold_reset_entry48(ColdResetEntry48::LDevDicePubKeyY),
@@ -244,7 +251,7 @@ impl DataVault {
     /// # Returns
     /// * fmc dice signature
     ///
-    pub fn fmc_dice_signature(&self) -> Ecc384Signature {
+    pub fn fmc_dice_signature(&mut self) -> Ecc384Signature {
         Ecc384Signature {
             r: self.read_cold_reset_entry48(ColdResetEntry48::FmcDiceSigR),
             s: self.read_cold_reset_entry48(ColdResetEntry48::FmcDiceSigS),
@@ -266,7 +273,7 @@ impl DataVault {
     /// # Returns
     /// * fmc public key
     ///
-    pub fn fmc_pub_key(&self) -> Ecc384PubKey {
+    pub fn fmc_pub_key(&mut self) -> Ecc384PubKey {
         Ecc384PubKey {
             x: self.read_cold_reset_entry48(ColdResetEntry48::FmcPubKeyX),
             y: self.read_cold_reset_entry48(ColdResetEntry48::FmcPubKeyY),
@@ -287,7 +294,7 @@ impl DataVault {
     /// # Returns
     /// * fmc tcb component identifier
     ///
-    pub fn fmc_tci(&self) -> Array4x12 {
+    pub fn fmc_tci(&mut self) -> Array4x12 {
         self.read_cold_reset_entry48(ColdResetEntry48::FmcTci)
     }
 
@@ -307,7 +314,7 @@ impl DataVault {
     ///
     /// * `Array4x12` - Owner public key hash
     ///
-    pub fn owner_pk_hash(&self) -> Array4x12 {
+    pub fn owner_pk_hash(&mut self) -> Array4x12 {
         self.read_cold_reset_entry48(ColdResetEntry48::OwnerPubKeyHash)
     }
 
@@ -325,7 +332,7 @@ impl DataVault {
     /// # Returns
     /// * fmc security version number
     ///
-    pub fn fmc_svn(&self) -> u32 {
+    pub fn fmc_svn(&mut self) -> u32 {
         self.read_cold_reset_entry4(ColdResetEntry4::FmcSvn)
     }
 
@@ -343,7 +350,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * fmc load address
-    pub fn fmc_load_addr(&self) -> u32 {
+    pub fn fmc_load_addr(&mut self) -> u32 {
         self.read_cold_reset_entry4(ColdResetEntry4::FmcLoadAddr)
     }
 
@@ -361,7 +368,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * fmc entry point
-    pub fn fmc_entry_point(&self) -> u32 {
+    pub fn fmc_entry_point(&mut self) -> u32 {
         self.read_cold_reset_entry4(ColdResetEntry4::FmcEntryPoint)
     }
 
@@ -380,7 +387,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * `u32` - Vendor public key index
-    pub fn vendor_pk_index(&self) -> u32 {
+    pub fn vendor_pk_index(&mut self) -> u32 {
         self.read_cold_reset_entry4(ColdResetEntry4::VendorPubKeyIndex)
     }
 
@@ -398,7 +405,7 @@ impl DataVault {
     /// # Returns
     /// * rt tcb component identifier
     ///
-    pub fn rt_tci(&self) -> Array4x12 {
+    pub fn rt_tci(&mut self) -> Array4x12 {
         self.read_warm_reset_entry48(WarmResetEntry48::RtTci)
     }
 
@@ -416,7 +423,7 @@ impl DataVault {
     /// # Returns
     /// * rt security version number
     ///
-    pub fn rt_svn(&self) -> u32 {
+    pub fn rt_svn(&mut self) -> u32 {
         self.read_warm_reset_entry4(WarmResetEntry4::RtSvn)
     }
 
@@ -434,7 +441,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * rt load address
-    pub fn rt_load_addr(&self) -> u32 {
+    pub fn rt_load_addr(&mut self) -> u32 {
         self.read_warm_reset_entry4(WarmResetEntry4::RtLoadAddr)
     }
 
@@ -452,7 +459,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * rt entry point
-    pub fn rt_entry_point(&self) -> u32 {
+    pub fn rt_entry_point(&mut self) -> u32 {
         self.read_warm_reset_entry4(WarmResetEntry4::RtEntryPoint)
     }
 
@@ -470,7 +477,7 @@ impl DataVault {
     /// # Returns
     ///
     /// * manifest address
-    pub fn manifest_addr(&self) -> u32 {
+    pub fn manifest_addr(&mut self) -> u32 {
         self.read_warm_reset_entry4(WarmResetEntry4::ManifestAddr)
     }
 
@@ -482,8 +489,8 @@ impl DataVault {
     /// # Returns
     ///    cold reset entry value  
     ///
-    pub fn read_cold_reset_entry48(&self, entry: ColdResetEntry48) -> Array4x12 {
-        let dv = dv::RegisterBlock::dv_reg();
+    pub fn read_cold_reset_entry48(&mut self, entry: ColdResetEntry48) -> Array4x12 {
+        let dv = self.dv.regs();
         Array4x12::read_from_reg(dv.sticky_data_vault_entry().at(entry.into()))
     }
 
@@ -505,7 +512,7 @@ impl DataVault {
     /// * `value` - cold reset entry value
     ///
     pub fn write_cold_reset_entry48(&mut self, entry: ColdResetEntry48, value: &Array4x12) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         value.write_to_reg(dv.sticky_data_vault_entry().at(entry.into()));
     }
 
@@ -515,7 +522,7 @@ impl DataVault {
     /// * `entry` - cold reset entry
     ///
     pub fn lock_cold_reset_entry48(&mut self, entry: ColdResetEntry48) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.sticky_data_vault_ctrl()
             .at(entry.into())
             .write(|w| w.lock_entry(true));
@@ -529,8 +536,8 @@ impl DataVault {
     /// # Returns
     ///    warm reset entry value  
     ///
-    pub fn read_warm_reset_entry48(&self, entry: WarmResetEntry48) -> Array4x12 {
-        let dv = dv::RegisterBlock::dv_reg();
+    pub fn read_warm_reset_entry48(&mut self, entry: WarmResetEntry48) -> Array4x12 {
+        let dv = self.dv.regs();
         Array4x12::read_from_reg(dv.nonsticky_data_vault_entry().at(entry.into()))
     }
 
@@ -552,7 +559,7 @@ impl DataVault {
     /// * `value` - warm reset entry value
     ///
     pub fn write_warm_reset_entry48(&mut self, entry: WarmResetEntry48, value: &Array4x12) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         value.write_to_reg(dv.nonsticky_data_vault_entry().at(entry.into()));
     }
 
@@ -562,7 +569,7 @@ impl DataVault {
     /// * `entry` - warm reset entry
     ///
     pub fn lock_warm_reset_entry48(&mut self, entry: WarmResetEntry48) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.non_sticky_data_vault_ctrl()
             .at(entry.into())
             .write(|w| w.lock_entry(true));
@@ -576,8 +583,8 @@ impl DataVault {
     /// # Returns
     ///    cold reset entry value  
     ///
-    pub fn read_cold_reset_entry4(&self, entry: ColdResetEntry4) -> u32 {
-        let dv = dv::RegisterBlock::dv_reg();
+    pub fn read_cold_reset_entry4(&mut self, entry: ColdResetEntry4) -> u32 {
+        let dv = self.dv.regs();
         dv.sticky_lockable_scratch_reg().at(entry.into()).read()
     }
 
@@ -599,7 +606,7 @@ impl DataVault {
     /// * `value` - cold reset entry value
     ///
     pub fn write_cold_reset_entry4(&mut self, entry: ColdResetEntry4, value: u32) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.sticky_lockable_scratch_reg()
             .at(entry.into())
             .write(|_| value);
@@ -611,7 +618,7 @@ impl DataVault {
     /// * `entry` - cold reset entry
     ///
     pub fn lock_cold_reset_entry4(&mut self, entry: ColdResetEntry4) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.sticky_lockable_scratch_reg_ctrl()
             .at(entry.into())
             .write(|w| w.lock_entry(true));
@@ -625,8 +632,8 @@ impl DataVault {
     /// # Returns
     ///    warm reset entry value  
     ///
-    pub fn read_warm_reset_entry4(&self, entry: WarmResetEntry4) -> u32 {
-        let dv = dv::RegisterBlock::dv_reg();
+    pub fn read_warm_reset_entry4(&mut self, entry: WarmResetEntry4) -> u32 {
+        let dv = self.dv.regs();
         dv.non_sticky_lockable_scratch_reg().at(entry.into()).read()
     }
 
@@ -646,7 +653,7 @@ impl DataVault {
     /// * `entry` - warm reset entry
     /// * `value` - warm reset entry value
     pub fn write_warm_reset_entry4(&mut self, entry: WarmResetEntry4, value: u32) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.non_sticky_lockable_scratch_reg()
             .at(entry.into())
             .write(|_| value);
@@ -657,7 +664,7 @@ impl DataVault {
     /// # Arguments
     /// * `entry` - warm reset entry
     pub fn lock_warm_reset_entry4(&mut self, entry: WarmResetEntry4) {
-        let dv = dv::RegisterBlock::dv_reg();
+        let dv = self.dv.regs();
         dv.non_sticky_lockable_scratch_reg_ctrl()
             .at(entry.into())
             .write(|w| w.lock_entry(true));

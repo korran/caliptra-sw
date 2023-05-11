@@ -16,6 +16,7 @@ use crate::wait;
 use crate::Array4x12;
 use crate::CaliptraResult;
 use caliptra_registers::sha512_acc;
+use caliptra_registers::sha512_acc::Sha512AccCsr;
 use caliptra_registers::sha512_acc::regs::ExecuteWriteVal;
 
 /// Maximum mailbox capacity in Bytes.
@@ -38,8 +39,9 @@ caliptra_err_def! {
 
 pub type Sha384Digest<'a> = &'a mut Array4x12;
 
-#[derive(Default, Debug)]
-pub struct Sha384Acc {}
+pub struct Sha384Acc {
+    sha512_acc: Sha512AccCsr,
+}
 
 impl Sha384Acc {
     /// Acquire the SHA384 Accelerator lock.
@@ -52,33 +54,36 @@ impl Sha384Acc {
     ///
     /// * `Sha384AccOp` - On, success, an object representing the SHA384 accelerator operation.
     /// * 'None' - On failure to acquire the SHA384 Accelerator lock.
-    pub fn try_start_operation(&self) -> Option<Sha384AccOp> {
-        let sha_acc = sha512_acc::RegisterBlock::sha512_acc_csr();
+    pub fn try_start_operation(&mut self) -> Option<Sha384AccOp> {
+        let sha_acc = self.sha512_acc.regs();
 
         if sha_acc.lock().read().lock() {
             None
         } else {
-            Some(Sha384AccOp::default())
+            Some(Sha384AccOp{
+                sha512_acc: &mut self.sha512_acc,
+            })
         }
     }
 }
 
-#[derive(Default, Debug)]
-pub struct Sha384AccOp {}
+pub struct Sha384AccOp<'a> {
+    sha512_acc: &'a mut Sha512AccCsr,
+}
 
-impl Drop for Sha384AccOp {
+impl Drop for Sha384AccOp<'_> {
     /// Release the SHA384 Accelerator lock.
     ///
     /// # Arguments
     ///
     /// * None
     fn drop(&mut self) {
-        let sha_acc = sha512_acc::RegisterBlock::sha512_acc_csr();
+        let sha_acc = self.sha512_acc.regs();
         sha_acc.lock().write(|w| w.lock(true));
     }
 }
 
-impl Sha384AccOp {
+impl Sha384AccOp<'_> {
     pub fn digest(
         &mut self,
         dlen: u32,
@@ -86,7 +91,7 @@ impl Sha384AccOp {
         maintain_data_endianess: bool,
         digest: Sha384Digest,
     ) -> CaliptraResult<()> {
-        let sha_acc = sha512_acc::RegisterBlock::sha512_acc_csr();
+        let sha_acc = self.sha512_acc.regs();
 
         if start_address >= MAX_MAILBOX_CAPACITY_BYTES
             || (start_address + dlen) > MAX_MAILBOX_CAPACITY_BYTES
@@ -124,11 +129,10 @@ impl Sha384AccOp {
     /// # Arguments
     ///
     /// * `buf` - Digest buffer
-    fn copy_digest_to_buf(&self, buf: &mut Array4x12) -> CaliptraResult<()> {
+    fn copy_digest_to_buf(&mut self, buf: &mut Array4x12) -> CaliptraResult<()> {
+        let sha_acc = self.sha512_acc.regs();
         *buf = Array4x12::read_from_reg(
-            sha512_acc::RegisterBlock::sha512_acc_csr()
-                .digest()
-                .truncate::<12>(),
+           sha_acc.digest().truncate::<12>(),
         );
         Ok(())
     }

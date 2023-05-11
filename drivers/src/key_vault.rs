@@ -15,7 +15,7 @@ Abstract:
 use bitfield::bitfield;
 
 use crate::{caliptra_err_def, CaliptraResult};
-use caliptra_registers::kv;
+use caliptra_registers::kv::{self, KvReg};
 
 /// Key Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,8 +154,9 @@ caliptra_err_def! {
 }
 
 /// Caliptra Key Vault
-#[derive(Default, Debug)]
-pub struct KeyVault {}
+pub struct KeyVault {
+    kv: KvReg,
+}
 
 impl KeyVault {
     /// Erase all the keys in the key vault
@@ -197,10 +198,10 @@ impl KeyVault {
             KeyId::KeyId31,
         ];
 
-        let kv = kv::RegisterBlock::kv_reg();
 
         for id in KEY_IDS {
             if !self.key_use_lock(id) && !self.key_write_lock(id) {
+                let kv = self.kv.regs();
                 kv.key_ctrl().at(id.into()).write(|w| w.clear(true));
             }
         }
@@ -220,7 +221,7 @@ impl KeyVault {
             raise_err!(EraseWriteLockSetFailure)
         }
 
-        let kv = kv::RegisterBlock::kv_reg();
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).write(|w| w.clear(true));
         Ok(())
     }
@@ -234,8 +235,8 @@ impl KeyVault {
     /// # Returns
     /// * `true` - If the key is write locked
     /// * `false` - If the Key is not write locked
-    pub fn key_write_lock(&self, id: KeyId) -> bool {
-        let kv = kv::RegisterBlock::kv_reg();
+    pub fn key_write_lock(&mut self, id: KeyId) -> bool {
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).read().lock_wr()
     }
 
@@ -245,7 +246,7 @@ impl KeyVault {
     ///
     /// * `id` - Key ID
     pub fn set_key_write_lock(&mut self, id: KeyId) {
-        let kv = kv::RegisterBlock::kv_reg();
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).write(|w| w.lock_wr(true))
     }
 
@@ -255,7 +256,7 @@ impl KeyVault {
     ///
     /// * `id` - Key ID
     pub fn clear_key_write_lock(&mut self, id: KeyId) {
-        let kv = kv::RegisterBlock::kv_reg();
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).write(|w| w.lock_wr(false))
     }
 
@@ -268,8 +269,8 @@ impl KeyVault {
     /// # Returns
     /// * `true` - If the key is use locked
     /// * `false` - If the Key is not use locked
-    pub fn key_use_lock(&self, id: KeyId) -> bool {
-        let kv = kv::RegisterBlock::kv_reg();
+    pub fn key_use_lock(&mut self, id: KeyId) -> bool {
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).read().lock_use()
     }
 
@@ -279,7 +280,7 @@ impl KeyVault {
     ///
     /// * `id` - Key ID
     pub fn set_key_use_lock(&mut self, id: KeyId) {
-        let kv = kv::RegisterBlock::kv_reg();
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).write(|w| w.lock_use(true))
     }
 
@@ -289,7 +290,7 @@ impl KeyVault {
     ///
     /// * `id` - Key ID
     pub fn clear_key_use_lock(&mut self, id: KeyId) {
-        let kv = kv::RegisterBlock::kv_reg();
+        let kv = self.kv.regs();
         kv.key_ctrl().at(id.into()).write(|w| w.lock_use(false))
     }
 
@@ -301,8 +302,8 @@ impl KeyVault {
     ///
     /// # Returns
     /// * `KeyUsage` - Key Usage
-    pub fn key_usage(&self, id: KeyId) -> KeyUsage {
-        let kv = kv::RegisterBlock::kv_reg();
+    pub fn key_usage(&mut self, id: KeyId) -> KeyUsage {
+        let kv = self.kv.regs();
         let val = kv.key_ctrl().at(id.into()).read();
         KeyUsage(val.dest_valid())
     }

@@ -5,16 +5,13 @@
 #![allow(clippy::erasing_op)]
 #![allow(clippy::identity_op)]
 #[derive(Clone, Copy)]
-pub struct RegisterBlock<TMmio: ureg::Mmio + core::borrow::Borrow<TMmio> = ureg::RealMmio> {
+pub struct RegisterBlock<'a, TMmio: ureg::Mmio + core::borrow::Borrow<TMmio> = ureg::RealMmio> {
     ptr: *mut u32,
     mmio: TMmio,
+    phantom: core::marker::PhantomData<&'a mut ()>,
 }
-impl RegisterBlock<ureg::RealMmio> {
-    pub fn hmac_reg() -> Self {
-        unsafe { Self::new(0x10010000 as *mut u32) }
-    }
-}
-impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<TMmio> {
+impl RegisterBlock<'_, ureg::RealMmio> {}
+impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<'static, TMmio> {
     /// # Safety
     ///
     /// The caller is responsible for ensuring that ptr is valid for
@@ -24,17 +21,22 @@ impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<TMmio> {
         Self {
             ptr,
             mmio: core::default::Default::default(),
+            phantom: core::marker::PhantomData::default(),
         }
     }
 }
-impl<TMmio: ureg::Mmio> RegisterBlock<TMmio> {
+impl<TMmio: ureg::Mmio> RegisterBlock<'_, TMmio> {
     /// # Safety
     ///
     /// The caller is responsible for ensuring that ptr is valid for
     /// volatile reads and writes at any of the offsets in this register
     /// block.
     pub unsafe fn new_with_mmio(ptr: *mut u32, mmio: TMmio) -> Self {
-        Self { ptr, mmio }
+        Self {
+            ptr,
+            mmio,
+            phantom: core::marker::PhantomData::default(),
+        }
     }
     /// Two 32-bit read-only registers repereseting of the name
     /// of HMAC384 component. These registers are located at
@@ -213,6 +215,25 @@ impl<TMmio: ureg::Mmio> RegisterBlock<TMmio> {
                 self.ptr.wrapping_add(0x614 / core::mem::size_of::<u32>()),
                 core::borrow::Borrow::borrow(&self.mmio),
             )
+        }
+    }
+}
+pub struct HmacReg {
+    _priv: (),
+}
+impl HmacReg {
+    pub const PTR: *mut u32 = 0x10010000 as *mut u32;
+    /// Safety
+    ///
+    /// Caller must ensure that only one instance of this type exists.
+    pub unsafe fn new() -> Self {
+        Self { _priv: () }
+    }
+    pub fn regs(&mut self) -> RegisterBlock<'_> {
+        RegisterBlock {
+            ptr: Self::PTR,
+            mmio: core::default::Default::default(),
+            phantom: core::marker::PhantomData::default(),
         }
     }
 }

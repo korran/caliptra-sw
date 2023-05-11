@@ -315,14 +315,14 @@ fn checksum(algo_type: &LmotsAlgorithmType, input_string: &[u8]) -> CaliptraResu
 }
 
 pub fn hash_message<const N: usize>(
+    sha256_driver: &mut Sha256,
     message: &[u8],
     lms_identifier: &LmsIdentifier,
     q: &[u8; 4],
     nonce: &[u8; N],
 ) -> CaliptraResult<HashValue<N>> {
     let mut digest = Array4x8::default();
-    let sha = Sha256::default();
-    let mut hasher = sha.digest_init(&mut digest)?;
+    let mut hasher = sha256_driver.digest_init(&mut digest)?;
     hasher.update(lms_identifier)?;
     hasher.update(q)?;
     hasher.update(&D_MESG.to_be_bytes())?;
@@ -333,6 +333,7 @@ pub fn hash_message<const N: usize>(
 }
 
 pub fn candidate_ots_signature<const N: usize, const P: usize>(
+    sha256_driver: &mut Sha256,
     algo_type: &LmotsAlgorithmType,
     lms_identifier: &LmsIdentifier,
     q: &[u8; 4],
@@ -375,8 +376,7 @@ pub fn candidate_ots_signature<const N: usize, const P: usize>(
         hash_block[20..22].clone_from_slice(&i.to_be_bytes());
         for j in a..upper {
             let mut digest = Array4x8::default();
-            let sha = Sha256::default();
-            let mut hasher = sha.digest_init(&mut digest)?;
+            let mut hasher = sha256_driver.digest_init(&mut digest)?;
             hash_block[22] = j;
             hash_block[23..23 + N].clone_from_slice(&tmp.0);
             hasher.update(&hash_block[0..23 + N])?;
@@ -386,8 +386,7 @@ pub fn candidate_ots_signature<const N: usize, const P: usize>(
         z[i as usize] = tmp;
     }
     let mut digest = Array4x8::default();
-    let sha = Sha256::default();
-    let mut hasher = sha.digest_init(&mut digest)?;
+    let mut hasher = sha256_driver.digest_init(&mut digest)?;
     hasher.update(lms_identifier)?;
     hasher.update(q)?;
     hasher.update(&D_PBLC.to_be_bytes())?;
@@ -400,6 +399,7 @@ pub fn candidate_ots_signature<const N: usize, const P: usize>(
 }
 
 pub fn verify_lms_signature<const N: usize, const P: usize>(
+    sha256_driver: &mut Sha256,
     tree_height: u8,
     input_string: &[u8],
     lms_identifier: &LmsIdentifier,
@@ -409,12 +409,14 @@ pub fn verify_lms_signature<const N: usize, const P: usize>(
 ) -> CaliptraResult<bool> {
     let q_str = q.to_be_bytes();
     let message_digest = hash_message(
+        sha256_driver,
         input_string,
         lms_identifier,
         &q_str,
         &lms_sig.lmots_signature.nonce,
     )?;
     let candidate_key = candidate_ots_signature(
+        sha256_driver,
         &lms_sig.lmots_signature.ots_type,
         lms_identifier,
         &q_str,
@@ -436,8 +438,7 @@ pub fn verify_lms_signature<const N: usize, const P: usize>(
     }
     let mut node_num = (1 << tree_height) + q;
     let mut digest = Array4x8::default();
-    let sha = Sha256::default();
-    let mut hasher = sha.digest_init(&mut digest)?;
+    let mut hasher = sha256_driver.digest_init(&mut digest)?;
     hasher.update(lms_identifier)?;
     hasher.update(&node_num.to_be_bytes())?;
     hasher.update(&D_LEAF.to_be_bytes())?;
@@ -448,8 +449,7 @@ pub fn verify_lms_signature<const N: usize, const P: usize>(
     while node_num > 1 {
         if node_num % 2 == 1 {
             let mut digest = Array4x8::default();
-            let sha = Sha256::default();
-            let mut hasher = sha.digest_init(&mut digest)?;
+            let mut hasher = sha256_driver.digest_init(&mut digest)?;
             hasher.update(lms_identifier)?;
             hasher.update(&(node_num / 2).to_be_bytes())?;
             hasher.update(&D_INTR.to_be_bytes())?;
@@ -459,8 +459,7 @@ pub fn verify_lms_signature<const N: usize, const P: usize>(
             temp = HashValue::<N>::from(digest);
         } else {
             let mut digest = Array4x8::default();
-            let sha = Sha256::default();
-            let mut hasher = sha.digest_init(&mut digest)?;
+            let mut hasher = sha256_driver.digest_init(&mut digest)?;
             hasher.update(lms_identifier)?;
             hasher.update(&(node_num / 2).to_be_bytes())?;
             hasher.update(&D_INTR.to_be_bytes())?;
