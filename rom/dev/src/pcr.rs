@@ -49,10 +49,10 @@ pub fn extend_pcr0(env: &RomEnv) -> CaliptraResult<()> {
         sha.map(|s| pcr_bank.map(|p| p.extend_pcr(PcrId::PcrId0, s, bytes)))
     };
 
-    extend_u8(env.dev_state().map(|d| d.lifecycle()) as u8)?;
-    extend_u8(env.dev_state().map(|d| d.debug_locked()) as u8)?;
-    extend_u8(env.fuse_bank().map(|f| f.anti_rollback_disable()) as u8)?;
-    extend(env.fuse_bank().map(|f| f.vendor_pub_key_hash()))?;
+    extend_u8(env.soc_ifc().map(|d| d.lifecycle()) as u8)?;
+    extend_u8(env.soc_ifc().map(|d| d.debug_locked()) as u8)?;
+    extend_u8(env.soc_ifc().map(|s| s.fuse_bank().anti_rollback_disable()) as u8)?;
+    extend(env.soc_ifc().map(|s| s.fuse_bank().vendor_pub_key_hash()))?;
     extend(env.data_vault().map(|d| d.owner_pk_hash()))?;
     extend_u8(env.data_vault().map(|d| d.vendor_pk_index()) as u8)?;
     extend(env.data_vault().map(|d| d.fmc_tci()))?;

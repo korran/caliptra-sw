@@ -17,8 +17,8 @@ Abstract:
 
 use crate::env_cell::EnvCell;
 use caliptra_drivers::{
-    DataVault, DeobfuscationEngine, DeviceState, Ecc384, FlowStatus, FuseBank, Hmac384, KeyVault,
-    Mailbox, MfgState, PcrBank, ResetService, Sha1, Sha256, Sha384, Sha384Acc,
+    DataVault, DeobfuscationEngine, Ecc384, Hmac384, KeyVault, Mailbox, PcrBank, Sha1, Sha256,
+    Sha384, Sha384Acc, SocIfc,
 };
 use core::ops::Range;
 
@@ -29,9 +29,6 @@ const ICCM_SIZE: u32 = 128 << 10;
 pub struct RomEnv {
     /// Deobfuscation engine
     doe: EnvCell<DeobfuscationEngine>,
-
-    /// Reset Service
-    reset: EnvCell<ResetService>,
 
     // SHA1 Engine
     sha1: EnvCell<Sha1>,
@@ -57,20 +54,11 @@ pub struct RomEnv {
     /// Data Vault
     data_vault: EnvCell<DataVault>,
 
-    /// Device state
-    dev_state: EnvCell<DeviceState>,
-
-    /// Manufacturing State
-    mfg_state: EnvCell<MfgState>,
+    /// SoC interface
+    soc_ifc: EnvCell<SocIfc>,
 
     /// Mailbox
     mbox: EnvCell<Mailbox>,
-
-    /// Flow Status
-    flow_status: EnvCell<FlowStatus>,
-
-    /// Fuse Bank
-    fuse_bank: EnvCell<FuseBank>,
 
     /// PCR Bank
     pcr_bank: EnvCell<PcrBank>,
@@ -80,7 +68,6 @@ impl Default for RomEnv {
     fn default() -> Self {
         Self {
             doe: EnvCell::new(DeobfuscationEngine::default()),
-            reset: EnvCell::new(ResetService::default()),
             sha1: EnvCell::new(Sha1::default()),
             sha256: EnvCell::new(Sha256::default()),
             sha384: EnvCell::new(Sha384::default()),
@@ -89,11 +76,8 @@ impl Default for RomEnv {
             ecc384: EnvCell::new(Ecc384::default()),
             key_vault: EnvCell::new(KeyVault::default()),
             data_vault: EnvCell::new(DataVault::default()),
-            dev_state: EnvCell::new(DeviceState::default()),
-            mfg_state: EnvCell::new(MfgState::default()),
+            soc_ifc: EnvCell::new(SocIfc::default()),
             mbox: EnvCell::new(Mailbox::default()),
-            flow_status: EnvCell::new(FlowStatus::default()),
-            fuse_bank: EnvCell::new(FuseBank::default()),
             pcr_bank: EnvCell::new(PcrBank::default()),
         }
     }
@@ -103,11 +87,6 @@ impl RomEnv {
     /// Get deobfuscation engine reference
     pub fn doe(&self) -> &EnvCell<DeobfuscationEngine> {
         &self.doe
-    }
-
-    /// Get reset service reference
-    pub fn reset(&self) -> &EnvCell<ResetService> {
-        &self.reset
     }
 
     /// Get SHA1 engine reference
@@ -150,29 +129,14 @@ impl RomEnv {
         &self.data_vault
     }
 
-    /// Get Security state reference
-    pub fn dev_state(&self) -> &EnvCell<DeviceState> {
-        &self.dev_state
-    }
-
-    /// Get Manufacturing state reference
-    pub fn mfg_state(&self) -> &EnvCell<MfgState> {
-        &self.mfg_state
+    /// Get SoC interface reference
+    pub fn soc_ifc(&self) -> &EnvCell<SocIfc> {
+        &self.soc_ifc
     }
 
     /// Get Mailbox
     pub fn mbox(&self) -> &EnvCell<Mailbox> {
         &self.mbox
-    }
-
-    /// Get Flow Status
-    pub fn flow_status(&self) -> &EnvCell<FlowStatus> {
-        &self.flow_status
-    }
-
-    /// Get Fuse Bank
-    pub fn fuse_bank(&self) -> &EnvCell<FuseBank> {
-        &self.fuse_bank
     }
 
     /// Get PCR Bank
