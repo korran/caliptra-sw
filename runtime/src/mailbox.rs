@@ -1,8 +1,10 @@
 // Licensed under the Apache-2.0 license
 
-use caliptra_registers::mbox::{self, enums::MboxStatusE};
+use caliptra_registers::mbox::{self, enums::MboxStatusE, MboxCsr};
 
-pub struct Mailbox {}
+pub struct Mailbox {
+    mbox: MboxCsr,
+}
 
 impl Mailbox {
     /// Check if there is a new command to be executed

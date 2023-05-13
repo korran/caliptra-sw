@@ -57,11 +57,11 @@ pub struct FmcEnv {
 }
 
 impl Default for FmcEnv {
-    fn default() -> Self {
+    unsafe fn new_from_registers() -> Self {
         Self {
             sha1: FmcEnvCell::new(Sha1::default()),
-            sha256: FmcEnvCell::new(Sha256::default()),
-            sha384: FmcEnvCell::new(Sha384::default()),
+            sha256: FmcEnvCell::new(Sha256::new(Sha256Reg::new())),
+            sha384: FmcEnvCell::new(Sha384::new(Sha512Reg::new())),
             sha384_acc: FmcEnvCell::new(Sha384Acc::default()),
             hmac384: FmcEnvCell::new(Hmac384::default()),
             ecc384: FmcEnvCell::new(Ecc384::default()),

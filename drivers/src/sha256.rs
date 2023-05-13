@@ -46,6 +46,9 @@ pub struct Sha256 {
 }
 
 impl Sha256 {
+    pub fn new(sha256: Sha256Reg) -> Self {
+        Self { sha256 }
+    }
     /// Initialize multi step digest operation
     ///
     /// # Returns
