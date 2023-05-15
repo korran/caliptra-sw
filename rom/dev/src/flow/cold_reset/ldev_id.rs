@@ -48,7 +48,7 @@ impl DiceLayer for LocalDevIdLayer {
     /// # Returns
     ///
     /// * `DiceOutput` - key pair, subject identifier serial number, subject key identifier
-    fn derive(env: &RomEnv, input: &DiceInput) -> CaliptraResult<DiceOutput> {
+    fn derive(env: &mut RomEnv, input: &DiceInput) -> CaliptraResult<DiceOutput> {
         cprintln!("[ldev] ++");
         cprintln!("[ldev] CDI.KEYID = {}", KEY_ID_CDI as u8);
         cprintln!("[ldev] SUBJECT.KEYID = {}", KEY_ID_LDEVID_PRIV_KEY as u8);
@@ -98,14 +98,14 @@ impl LocalDevIdLayer {
     /// * `env` - ROM Environment
     /// * `fe`  - Key slot holding the field entropy
     /// * `cdi` - Key Slot to store the generated CDI
-    fn derive_cdi(env: &RomEnv, fe: KeyId, cdi: KeyId) -> CaliptraResult<()> {
+    fn derive_cdi(env: &mut RomEnv, fe: KeyId, cdi: KeyId) -> CaliptraResult<()> {
         // CDI Key
         let key = Hmac384Key::Key(KeyReadArgs::new(cdi));
         let data = Hmac384Data::Key(KeyReadArgs::new(fe));
         Crypto::hmac384_mac(env, key, data, cdi)?;
 
         cprintln!("[ldev] Erasing FE.KEYID = {}", fe as u8);
-        env.key_vault().map(|k| k.erase_key(fe))?;
+        env.key_vault.erase_key(fe)?;
         Ok(())
     }
 
@@ -120,7 +120,11 @@ impl LocalDevIdLayer {
     /// # Returns
     ///
     /// * `Ecc384KeyPair` - Derive DICE Layer Key Pair
-    fn derive_key_pair(env: &RomEnv, cdi: KeyId, priv_key: KeyId) -> CaliptraResult<Ecc384KeyPair> {
+    fn derive_key_pair(
+        env: &mut RomEnv,
+        cdi: KeyId,
+        priv_key: KeyId,
+    ) -> CaliptraResult<Ecc384KeyPair> {
         Crypto::ecc384_key_gen(env, cdi, priv_key)
     }
 
@@ -132,7 +136,7 @@ impl LocalDevIdLayer {
     /// * `input`  - DICE Input
     /// * `output` - DICE Output
     fn generate_cert_sig(
-        env: &RomEnv,
+        env: &mut RomEnv,
         input: &DiceInput,
         output: &DiceOutput,
     ) -> CaliptraResult<()> {
@@ -170,7 +174,7 @@ impl LocalDevIdLayer {
         // Clear the authority private key
         //To-Do : Disabling The Print Temporarily
         //cprintln!("[ldev] Erasing AUTHORITY.KEYID = {}", auth_priv_key as u8);
-        env.key_vault().map(|k| k.erase_key(auth_priv_key))?;
+        env.key_vault.erase_key(auth_priv_key)?;
 
         // Verify the signature of the `To Be Signed` portion
         if !Crypto::ecdsa384_verify(env, auth_pub_key, tbs.tbs(), sig)? {
@@ -189,11 +193,11 @@ impl LocalDevIdLayer {
 
         // Lock the Local Device ID cert signature in data vault until
         // cold reset
-        env.data_vault().map(|d| d.set_ldev_dice_signature(sig));
+        env.data_vault.set_ldev_dice_signature(sig);
 
         // Lock the Local Device ID public keys in data vault until
         // cold reset
-        env.data_vault().map(|d| d.set_ldev_dice_pub_key(pub_key));
+        env.data_vault.set_ldev_dice_pub_key(pub_key);
 
         //  Copy TBS to DCCM.
         copy_tbs(tbs.tbs(), TbsType::LdevidTbs)?;
