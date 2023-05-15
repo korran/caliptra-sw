@@ -92,7 +92,7 @@ pub struct MailboxExternal {
     regs: Rc<RefCell<MailboxRegs>>,
 }
 impl MailboxExternal {
-    pub fn regs(&mut self) -> caliptra_registers::mbox::RegisterBlock<BusMmio<Self>> {
+    pub fn regs(&mut self) -> caliptra_registers::mbox::RegisterBlock<'static, BusMmio<Self>> {
         unsafe {
             caliptra_registers::mbox::RegisterBlock::new_with_mmio(
                 std::ptr::null_mut::<u32>(),
@@ -136,7 +136,7 @@ impl MailboxInternal {
         }
     }
 
-    pub fn regs(&mut self) -> caliptra_registers::mbox::RegisterBlock<BusMmio<Self>> {
+    pub fn regs(&mut self) -> caliptra_registers::mbox::RegisterBlock<'static, BusMmio<Self>> {
         unsafe {
             caliptra_registers::mbox::RegisterBlock::new_with_mmio(
                 std::ptr::null_mut::<u32>(),
