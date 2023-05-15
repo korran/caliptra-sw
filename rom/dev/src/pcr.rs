@@ -29,34 +29,33 @@ use caliptra_drivers::{Array4x12, CaliptraResult, PcrId};
 /// # Arguments
 ///
 /// * `env` - ROM Environment
-pub fn extend_pcr0(env: &RomEnv) -> CaliptraResult<()> {
-    let sha = env.sha384();
-    let pcr_bank = env.pcr_bank();
+pub fn extend_pcr0(env: &mut RomEnv) -> CaliptraResult<()> {
+    let sha384 = &mut env.sha384;
 
     // Clear the PCR
-    pcr_bank.map(|p| p.erase_pcr(caliptra_drivers::PcrId::PcrId0))?;
+    env.pcr_bank.erase_pcr(caliptra_drivers::PcrId::PcrId0)?;
 
     // Lock the PCR from clear
-    pcr_bank.map(|p| p.set_pcr_lock(caliptra_drivers::PcrId::PcrId0));
+    env.pcr_bank.set_pcr_lock(caliptra_drivers::PcrId::PcrId0);
 
     let extend = |data: Array4x12| {
         let bytes: &[u8; 48] = &data.into();
-        sha.map(|s| pcr_bank.map(|p| p.extend_pcr(PcrId::PcrId0, s, bytes)))
+        env.pcr_bank.extend_pcr(PcrId::PcrId0, sha384, bytes)
     };
 
     let extend_u8 = |data: u8| {
         let bytes = &data.to_le_bytes();
-        sha.map(|s| pcr_bank.map(|p| p.extend_pcr(PcrId::PcrId0, s, bytes)))
+        env.pcr_bank.extend_pcr(PcrId::PcrId0, sha384, bytes)
     };
 
-    extend_u8(env.soc_ifc().map(|d| d.lifecycle()) as u8)?;
-    extend_u8(env.soc_ifc().map(|d| d.debug_locked()) as u8)?;
-    extend_u8(env.soc_ifc().map(|s| s.fuse_bank().anti_rollback_disable()) as u8)?;
-    extend(env.soc_ifc().map(|s| s.fuse_bank().vendor_pub_key_hash()))?;
-    extend(env.data_vault().map(|d| d.owner_pk_hash()))?;
-    extend_u8(env.data_vault().map(|d| d.vendor_pk_index()) as u8)?;
-    extend(env.data_vault().map(|d| d.fmc_tci()))?;
-    extend_u8(env.data_vault().map(|d| d.fmc_svn()) as u8)?;
+    extend_u8(env.soc_ifc.lifecycle() as u8)?;
+    extend_u8(env.soc_ifc.debug_locked() as u8)?;
+    extend_u8(env.soc_ifc.fuse_bank().anti_rollback_disable() as u8)?;
+    extend(env.soc_ifc.fuse_bank().vendor_pub_key_hash())?;
+    extend(env.data_vault.owner_pk_hash())?;
+    extend_u8(env.data_vault.vendor_pk_index() as u8)?;
+    extend(env.data_vault.fmc_tci())?;
+    extend_u8(env.data_vault.fmc_svn() as u8)?;
 
     // TODO: Check PCR0 != 0
     Ok(())
