@@ -17,7 +17,7 @@ use caliptra_registers::mbox::MboxCsr;
 use caliptra_registers::mbox::enums::MboxFsmE;
 use caliptra_registers::mbox::{enums::MboxStatusE};
 use core::cmp::min;
-use core::mem::size_of;
+use core::mem::{size_of, self, ManuallyDrop};
 
 caliptra_err_def! {
     Mailbox,
@@ -83,6 +83,17 @@ impl Mailbox {
         match mbox.status().read().mbox_fsm_ps() {
             MboxFsmE::MboxExecuteUc => Some(MailboxRecvTxn{
                 state: MailboxOpState::Execute,
+                mbox: &mut self.mbox,
+            }),
+            _ => None,
+        }
+    }
+
+    /// Lets the caller peek into the mailbox without touching the transaction.
+    pub fn peek_recv(&mut self) -> Option<MailboxRecvPeek> {
+        let mbox = self.mbox.regs();
+        match mbox.status().read().mbox_fsm_ps() {
+            MboxFsmE::MboxExecuteUc => Some(MailboxRecvPeek{
                 mbox: &mut self.mbox,
             }),
             _ => None,
@@ -273,6 +284,31 @@ impl Drop for MailboxSendTxn<'_> {
             let _ = self.send_request(0, &[]);
             // Release the lock
             let _ = self.complete();
+        }
+    }
+}
+
+pub struct MailboxRecvPeek<'a> {
+    mbox: &'a mut MboxCsr,
+}
+impl<'a> MailboxRecvPeek<'a> {
+    /// Returns the value stored in the command register
+    pub fn cmd(&mut self) -> u32 {
+        let mbox = self.mbox.regs();
+        mbox.cmd().read()
+    }
+
+    /// Returns the value stored in the data length register. This is the total
+    /// size of the mailbox data in bytes.
+    pub fn dlen(&mut self) -> u32 {
+        let mbox = self.mbox.regs();
+        mbox.dlen().read()
+    }
+
+    pub fn start_txn(self) -> MailboxRecvTxn<'a> {
+        MailboxRecvTxn{
+            state: MailboxOpState::Execute,
+            mbox: self.mbox,
         }
     }
 }

@@ -65,7 +65,7 @@ pub trait ImageVerificationEnv {
 
     /// Calculate SHA-384 Digest
     fn sha384_digest(
-        &self,
+        &mut self,
         image: Self::Image,
         offset: u32,
         len: u32,
@@ -73,7 +73,7 @@ pub trait ImageVerificationEnv {
 
     /// Perform ECC-348 Verification
     fn ecc384_verify(
-        &self,
+        &mut self,
         image: Self::Image,
         digest: &ImageDigest,
         pub_key: &ImageEccPubKey,
@@ -81,34 +81,34 @@ pub trait ImageVerificationEnv {
     ) -> CaliptraResult<bool>;
 
     /// Get Vendor Public Key Digest
-    fn vendor_pub_key_digest(&self, image: Self::Image) -> ImageDigest;
+    fn vendor_pub_key_digest(&mut self, image: Self::Image) -> ImageDigest;
 
     /// Get Vendor Public Key Revocation list
-    fn vendor_pub_key_revocation(&self, image: Self::Image) -> VendorPubKeyRevocation;
+    fn vendor_pub_key_revocation(&mut self, image: Self::Image) -> VendorPubKeyRevocation;
 
     /// Get Owner Public Key Digest from fuses
-    fn owner_pub_key_digest_fuses(&self) -> ImageDigest;
+    fn owner_pub_key_digest_fuses(&mut self) -> ImageDigest;
 
     /// Get Anti-Rollback disable setting
-    fn anti_rollback_disable(&self, image: Self::Image) -> bool;
+    fn anti_rollback_disable(&mut self, image: Self::Image) -> bool;
 
     // Get Device Lifecycle state
-    fn dev_lifecycle(&self, image: Self::Image) -> Lifecycle;
+    fn dev_lifecycle(&mut self, image: Self::Image) -> Lifecycle;
 
     // Get the vendor key index saved on cold boot in data vault
-    fn vendor_pub_key_idx_dv(&self) -> u32;
+    fn vendor_pub_key_idx_dv(&mut self) -> u32;
 
     // Get the owner key digest saved on cold boot in data vault
-    fn owner_pub_key_digest_dv(&self) -> ImageDigest;
+    fn owner_pub_key_digest_dv(&mut self) -> ImageDigest;
 
     // Save the fmc digest in the data vault on cold boot
-    fn get_fmc_digest_dv(&self) -> ImageDigest;
+    fn get_fmc_digest_dv(&mut self) -> ImageDigest;
 
     // Get Fuse FMC Key Manifest SVN
-    fn fmc_svn(&self) -> u32;
+    fn fmc_svn(&mut self) -> u32;
 
     // Get Runtime fuse SVN
-    fn runtime_svn(&self) -> u32;
+    fn runtime_svn(&mut self) -> u32;
 
     // ICCM Range
     fn iccm_range(&self) -> Range<u32>;

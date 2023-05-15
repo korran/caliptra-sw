@@ -119,7 +119,7 @@ impl FhtDataStore {
     }
 }
 
-pub fn make_fht(env: &RomEnv) -> FirmwareHandoffTable {
+pub fn make_fht(env: &mut RomEnv) -> FirmwareHandoffTable {
     FirmwareHandoffTable {
         fht_marker: FHT_MARKER,
         fht_major_ver: FHT_MAJOR_VERSION,

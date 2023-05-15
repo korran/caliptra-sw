@@ -45,10 +45,10 @@ impl UpdateResetFlow {
     /// # Arguments
     ///
     /// * `env` - ROM Environment
-    pub fn run(env: &RomEnv) -> CaliptraResult<FirmwareHandoffTable> {
+    pub fn run(env: &mut RomEnv) -> CaliptraResult<FirmwareHandoffTable> {
         cprintln!("[update-reset] ++");
 
-        let Some(recv_txn) = env.mbox.try_start_recv_txn() else {
+        let Some(mut recv_txn) = env.mbox.try_start_recv_txn() else {
             cprintln!("Failed To Get Mailbox Transaction");
             raise_err!(MailboxAccessFailure)
         };
@@ -82,12 +82,12 @@ impl UpdateResetFlow {
     /// * 'manifest'- Manifest
     ///
     fn verify_image(
-        env: &RomEnv,
+        env: &mut RomEnv,
         manifest: &ImageManifest,
     ) -> CaliptraResult<ImageVerificationInfo> {
         let venv = RomImageVerificationEnv::new(env);
 
-        let verifier = ImageVerifier::new(venv);
+        let mut verifier = ImageVerifier::new(venv);
 
         let info = verifier.verify(manifest, (), ResetReason::UpdateReset)?;
 

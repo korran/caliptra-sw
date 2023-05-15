@@ -27,7 +27,7 @@ use crate::{rom_env::RomEnv, rom_err_def};
 use caliptra_common::dice;
 use caliptra_drivers::{
     okref, Array4x12, CaliptraResult, ColdResetEntry4, ColdResetEntry48, Hmac384Data, Hmac384Key,
-    KeyId, KeyReadArgs, Lifecycle, MailboxRecvTxn, ResetReason, WarmResetEntry4, WarmResetEntry48,
+    KeyId, KeyReadArgs, Lifecycle, MailboxRecvTxn, ResetReason, WarmResetEntry4, WarmResetEntry48, Mailbox, SocIfc, DataVault,
 };
 use caliptra_image_types::{ImageManifest, IMAGE_BYTE_SIZE};
 use caliptra_image_verify::{ImageVerificationInfo, ImageVerifier};
@@ -45,6 +45,7 @@ rom_err_def! {
         CertVerify = 0x1,
         ManifestReadFailure = 0x2,
         InvalidImageSize = 0x3,
+        MailboxStateInconsistent = 0x4,
     }
 }
 
@@ -63,24 +64,35 @@ impl DiceLayer for FmcAliasLayer {
         );
 
         // Download the image
-        let mut txn = Self::download_image(env)?;
+        let mut txn = Self::download_image(&mut env.soc_ifc, &mut env.mbox)?;
 
         // Load the manifest
-        let manifest = Self::load_manifest(&txn);
+        let manifest = Self::load_manifest(&mut txn);
         let manifest = okref(&manifest)?;
 
+        let mut venv =
+            RomImageVerificationEnv{
+                sha384: &mut env.sha384,
+                sha384_acc: &mut env.sha384_acc,
+                soc_ifc: &mut env.soc_ifc,
+                ecc384: &mut env.ecc384,
+                data_vault: &mut env.data_vault,
+                pcr_bank: &mut env.pcr_bank,
+            };
+
         // Verify the image
-        let info = Self::verify_image(env, manifest);
+        let info = Self::verify_image(&mut venv, manifest);
         let info = okref(&info)?;
 
+
         // populate data vault
-        Self::populate_data_vault(env, info);
+        Self::populate_data_vault(venv.data_vault, info);
 
         // Extend PCR0
-        pcr::extend_pcr0(env)?;
+        pcr::extend_pcr0(&mut venv)?;
 
         // Load the image
-        Self::load_image(env, manifest, &txn)?;
+        Self::load_image(manifest, &mut txn)?;
 
         // Complete the mailbox transaction indicating success.
         txn.complete(true)?;
@@ -157,22 +169,25 @@ impl FmcAliasLayer {
     /// report_error is called. This prevents a race condition where the SoC
     /// reads FW_ERROR_NON_FATAL immediately after the mailbox transaction
     /// fails, but before caliptra has set the FW_ERROR_NON_FATAL register.
-    fn download_image(env: &mut RomEnv) -> CaliptraResult<ManuallyDrop<MailboxRecvTxn>> {
-        env.soc_ifc.flow_status_set_ready_for_firmware();
+    fn download_image<'a>(soc_ifc: &mut SocIfc, mbox: &'a mut Mailbox) -> CaliptraResult<ManuallyDrop<MailboxRecvTxn<'a>>> {
+        soc_ifc.flow_status_set_ready_for_firmware();
 
         cprint!("[afmc] Waiting for Image ");
         loop {
-            cprint!(".");
-            if let Some(mut txn) = env.mbox.try_start_recv_txn() {
+            if let Some(mut txn) = mbox.peek_recv() {
                 if txn.cmd() != Self::MBOX_DOWNLOAD_FIRMWARE_CMD_ID {
                     cprintln!("Invalid command 0x{:08x} received", txn.cmd());
-                    txn.complete(false)?;
+                    txn.start_txn().complete(false)?;
                     continue;
                 }
+                
+                // Re-borrow mailbox to work around https://github.com/rust-lang/rust/issues/54663
+                let txn = mbox.peek_recv().ok_or(err_u32!(MailboxStateInconsistent))?;
+
                 // This is a download-firmware command; don't drop this, as the
                 // transaction will be completed by either report_error() (on
                 // failure) or by a manual complete call upon success.
-                let txn = ManuallyDrop::new(txn);
+                let mut txn = ManuallyDrop::new(txn.start_txn());
                 if txn.dlen() == 0 || txn.dlen() > IMAGE_BYTE_SIZE as u32 {
                     cprintln!("Invalid Image of size {} bytes" txn.dlen());
                     raise_err!(InvalidImageSize);
@@ -180,7 +195,7 @@ impl FmcAliasLayer {
 
                 cprintln!("");
                 cprintln!("[afmc] Received Image of size {} bytes" txn.dlen());
-                break Ok(txn);
+                return Ok(txn);
             }
         }
     }
@@ -190,7 +205,7 @@ impl FmcAliasLayer {
     /// # Returns
     ///
     /// * `Manifest` - Caliptra Image Bundle Manifest
-    fn load_manifest(txn: &MailboxRecvTxn) -> CaliptraResult<ImageManifest> {
+    fn load_manifest(txn: &mut MailboxRecvTxn) -> CaliptraResult<ImageManifest> {
         let slice = unsafe {
             let ptr = &mut MAN1_ORG as *mut u32;
             core::slice::from_raw_parts_mut(ptr, core::mem::size_of::<ImageManifest>() / 4)
@@ -207,11 +222,10 @@ impl FmcAliasLayer {
     ///
     /// * `env` - ROM Environment
     fn verify_image(
-        env: &RomEnv,
+        venv: &mut RomImageVerificationEnv,
         manifest: &ImageManifest,
     ) -> CaliptraResult<ImageVerificationInfo> {
-        let venv = RomImageVerificationEnv::new(env);
-        let verifier = ImageVerifier::new(venv);
+        let mut verifier: ImageVerifier<RomImageVerificationEnv, _> = ImageVerifier::new(venv);
         let info = verifier.verify(manifest, (), ResetReason::ColdReset)?;
 
         cprintln!(
@@ -230,9 +244,8 @@ impl FmcAliasLayer {
     /// * `manifest` - Manifest
     /// * `txn`      - Mailbox Receive Transaction
     fn load_image(
-        _env: &RomEnv,
         manifest: &ImageManifest,
-        txn: &MailboxRecvTxn,
+        txn: &mut MailboxRecvTxn,
     ) -> CaliptraResult<()> {
         cprintln!(
             "[afmc] Loading FMC at address 0x{:08x} len {}",
@@ -269,39 +282,39 @@ impl FmcAliasLayer {
     ///
     /// * `env`  - ROM Environment
     /// * `info` - Image Verification Info
-    fn populate_data_vault(env: &mut RomEnv, info: &ImageVerificationInfo) {
-        env.data_vault
+    fn populate_data_vault(data_vault: &mut DataVault, info: &ImageVerificationInfo) {
+        data_vault
             .write_cold_reset_entry48(ColdResetEntry48::FmcTci, &info.fmc.digest.into());
 
-        env.data_vault
+        data_vault
             .write_cold_reset_entry4(ColdResetEntry4::FmcSvn, info.fmc.svn);
 
-        env.data_vault
+        data_vault
             .write_cold_reset_entry4(ColdResetEntry4::FmcLoadAddr, info.fmc.load_addr);
 
-        env.data_vault
+        data_vault
             .write_cold_reset_entry4(ColdResetEntry4::FmcEntryPoint, info.fmc.entry_point);
 
-        env.data_vault.write_cold_reset_entry48(
+        data_vault.write_cold_reset_entry48(
             ColdResetEntry48::OwnerPubKeyHash,
             &info.owner_pub_keys_digest.into(),
         );
 
-        env.data_vault.write_cold_reset_entry4(
+        data_vault.write_cold_reset_entry4(
             ColdResetEntry4::VendorPubKeyIndex,
             info.vendor_ecc_pub_key_idx,
         );
 
-        env.data_vault
+        data_vault
             .write_warm_reset_entry48(WarmResetEntry48::RtTci, &info.runtime.digest.into());
 
-        env.data_vault
+        data_vault
             .write_warm_reset_entry4(WarmResetEntry4::RtSvn, info.runtime.svn);
 
-        env.data_vault
+        data_vault
             .write_warm_reset_entry4(WarmResetEntry4::RtLoadAddr, info.runtime.load_addr);
 
-        env.data_vault
+        data_vault
             .write_warm_reset_entry4(WarmResetEntry4::RtEntryPoint, info.runtime.entry_point);
 
         // TODO: Need a better way to get the Manifest address
@@ -310,7 +323,7 @@ impl FmcAliasLayer {
             ptr as u32
         };
 
-        env.data_vault
+        data_vault
             .write_warm_reset_entry4(WarmResetEntry4::ManifestAddr, slice);
     }
 
