@@ -58,6 +58,11 @@ pub struct Sha384 {
 }
 
 impl Sha384 {
+    pub fn new(sha512: Sha512Reg) -> Self {
+        Self {
+            sha512,
+        }
+    }
     /// Initialize multi step digest operation
     ///
     /// # Returns

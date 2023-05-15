@@ -51,6 +51,11 @@ pub struct SocIfc {
 }
 
 impl SocIfc {
+    pub fn new(soc_ifc: SocIfcReg) -> Self {
+        Self {
+            soc_ifc,
+        }
+    }
     /// Retrieve the device lifecycle state
     pub fn lifecycle(&mut self) -> Lifecycle {
         let soc_ifc_regs = self.soc_ifc.regs();

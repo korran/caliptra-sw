@@ -82,6 +82,11 @@ pub struct PcrBank {
 }
 
 impl PcrBank {
+    pub fn new(pv: PvReg) -> Self {
+        Self {
+            pv,
+        }
+    }
     /// Erase all the pcrs in the pcr vault
     ///
     /// Note: The pcrs that have "use" lock set will not be erased

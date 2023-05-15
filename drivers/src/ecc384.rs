@@ -152,7 +152,7 @@ pub struct Ecc384 {
 }
 
 impl Ecc384 {
-    fn new(ecc: EccReg) -> Self {
+    pub fn new(ecc: EccReg) -> Self {
         Self { ecc }
     }
     /// Generate ECC-384 Key Pair

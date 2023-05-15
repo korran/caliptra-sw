@@ -1,52 +1,61 @@
 // Licensed under the Apache-2.0 license
 
-use caliptra_registers::mbox::{self, enums::MboxStatusE, MboxCsr};
+use caliptra_registers::mbox::{enums::MboxStatusE, MboxCsr};
 
 pub struct Mailbox {
     mbox: MboxCsr,
 }
 
 impl Mailbox {
+    pub fn new(mbox: MboxCsr) -> Self {
+        Self {
+            mbox,
+        }
+    }
     /// Check if there is a new command to be executed
-    pub fn is_cmd_ready() -> bool {
-        let mbox = mbox::RegisterBlock::mbox_csr();
+    pub fn is_cmd_ready(&mut self) -> bool {
+        let mbox = self.mbox.regs();
         mbox.status().read().mbox_fsm_ps().mbox_execute_uc()
     }
 
     // Get the length of the current mailbox data in bytes
-    pub fn dlen() -> u32 {
-        mbox::RegisterBlock::mbox_csr().dlen().read()
+    pub fn dlen(&mut self) -> u32 {
+        let mbox = self.mbox.regs();
+        mbox.dlen().read()
     }
 
     // Set the length of the current mailbox data in bytes
-    pub fn set_dlen(len: u32) {
-        mbox::RegisterBlock::mbox_csr().dlen().write(|_| len);
+    pub fn set_dlen(&mut self, len: u32) {
+        let mbox = self.mbox.regs();
+        mbox.dlen().write(|_| len);
     }
 
     // Get the length of the current mailbox data in words
-    pub fn dlen_words() -> u32 {
-        (Self::dlen() + 7) / 8
+    pub fn dlen_words(&mut self) -> u32 {
+        (self.dlen() + 7) / 8
     }
 
-    pub fn cmd() -> u32 {
-        mbox::RegisterBlock::mbox_csr().cmd().read()
+    pub fn cmd(&mut self) -> u32 {
+        let mbox = self.mbox.regs();
+        mbox.cmd().read()
     }
 
-    pub fn copy_from_mbox(buf: &mut [u32]) {
+    pub fn copy_from_mbox(&mut self, buf: &mut [u32]) {
+        let mbox = self.mbox.regs();
         for word in buf {
-            *word = mbox::RegisterBlock::mbox_csr().dataout().read();
+            *word = mbox.dataout().read();
         }
     }
 
-    pub fn copy_to_mbox(buf: &[u32]) {
+    pub fn copy_to_mbox(&mut self, buf: &[u32]) {
+        let mbox = self.mbox.regs();
         for word in buf {
-            mbox::RegisterBlock::mbox_csr().datain().write(|_| *word);
+            mbox.datain().write(|_| *word);
         }
     }
 
-    pub fn set_status(status: MboxStatusE) {
-        mbox::RegisterBlock::mbox_csr()
-            .status()
-            .write(|w| w.status(|_| status));
+    pub fn set_status(&mut self, status: MboxStatusE) {
+        let mbox = self.mbox.regs();
+        mbox.status().write(|w| w.status(|_| status));
     }
 }

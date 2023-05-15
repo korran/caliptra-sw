@@ -148,6 +148,11 @@ pub struct Hmac384 {
 }
 
 impl Hmac384 {
+    pub fn new(hmac: HmacReg) -> Self {
+        Self {
+            hmac
+        }
+    }
     /// Initialize multi step HMAC operation
     ///
     /// # Arguments

@@ -55,6 +55,11 @@ pub struct Mailbox {
 const MAX_MAILBOX_LEN: u32 = 128 * 1024;
 
 impl Mailbox {
+    pub fn new(mbox: MboxCsr) -> Self {
+        Self {
+            mbox,
+        }
+    }
     /// Attempt to acquire the lock to start sending data.
     /// # Returns
     /// * `MailboxSendTxn` - Object representing a send operation

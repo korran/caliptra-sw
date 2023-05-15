@@ -19,6 +19,7 @@ use crate::fmc_env_cell::FmcEnvCell;
 use caliptra_drivers::{
     DataVault, Ecc384, Hmac384, KeyVault, Mailbox, PcrBank, Sha1, Sha256, Sha384, Sha384Acc, SocIfc,
 };
+use caliptra_registers::{sha256::Sha256Reg, sha512::Sha512Reg, sha512_acc::Sha512AccCsr, hmac::HmacReg, ecc::EccReg, kv::KvReg, dv::DvReg, soc_ifc::SocIfcReg, mbox::MboxCsr, pv::PvReg};
 
 /// Hardware Context
 pub struct FmcEnv {
@@ -56,20 +57,25 @@ pub struct FmcEnv {
     pcr_bank: FmcEnvCell<PcrBank>,
 }
 
-impl Default for FmcEnv {
-    unsafe fn new_from_registers() -> Self {
+impl FmcEnv {
+    /// # Safety
+    /// 
+    /// Callers must ensure that this function is called only once, and that any
+    /// concurrent access to these register blocks does not conflict with these
+    /// drivers.
+    pub unsafe fn new_from_registers() -> Self {
         Self {
             sha1: FmcEnvCell::new(Sha1::default()),
             sha256: FmcEnvCell::new(Sha256::new(Sha256Reg::new())),
             sha384: FmcEnvCell::new(Sha384::new(Sha512Reg::new())),
-            sha384_acc: FmcEnvCell::new(Sha384Acc::default()),
-            hmac384: FmcEnvCell::new(Hmac384::default()),
-            ecc384: FmcEnvCell::new(Ecc384::default()),
-            key_vault: FmcEnvCell::new(KeyVault::default()),
-            data_vault: FmcEnvCell::new(DataVault::default()),
-            soc_ifc: FmcEnvCell::new(SocIfc::default()),
-            mbox: FmcEnvCell::new(Mailbox::default()),
-            pcr_bank: FmcEnvCell::new(PcrBank::default()),
+            sha384_acc: FmcEnvCell::new(Sha384Acc::new(Sha512AccCsr::new())),
+            hmac384: FmcEnvCell::new(Hmac384::new(HmacReg::new())),
+            ecc384: FmcEnvCell::new(Ecc384::new(EccReg::new())),
+            key_vault: FmcEnvCell::new(KeyVault::new(KvReg::new())),
+            data_vault: FmcEnvCell::new(DataVault::new(DvReg::new())),
+            soc_ifc: FmcEnvCell::new(SocIfc::new(SocIfcReg::new())),
+            mbox: FmcEnvCell::new(Mailbox::new(MboxCsr::new())),
+            pcr_bank: FmcEnvCell::new(PcrBank::new(PvReg::new())),
         }
     }
 }

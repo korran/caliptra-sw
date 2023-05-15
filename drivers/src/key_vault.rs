@@ -159,6 +159,11 @@ pub struct KeyVault {
 }
 
 impl KeyVault {
+    pub fn new(kv: KvReg) -> Self {
+        KeyVault {
+            kv,
+        }
+    }
     /// Erase all the keys in the key vault
     ///
     /// Note: The keys that have "use" or "write" lock set will not be erased

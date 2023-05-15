@@ -44,6 +44,11 @@ pub struct Sha384Acc {
 }
 
 impl Sha384Acc {
+    pub fn new(sha512_acc: Sha512AccCsr) -> Self {
+        Self {
+            sha512_acc,
+        }
+    }
     /// Acquire the SHA384 Accelerator lock.
     ///
     /// # Arguments
