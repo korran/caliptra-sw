@@ -58,16 +58,26 @@ impl UpdateResetFlow {
             raise_err!(InvalidFirmwareCommand)
         }
 
-        let manifest = Self::load_manifest(&recv_txn)?;
+        let manifest = Self::load_manifest(&mut recv_txn)?;
 
-        let info = Self::verify_image(env, &manifest)?;
+        let mut venv =
+            RomImageVerificationEnv{
+                sha384: &mut env.sha384,
+                sha384_acc: &mut env.sha384_acc,
+                soc_ifc: &mut env.soc_ifc,
+                ecc384: &mut env.ecc384,
+                data_vault: &mut env.data_vault,
+                pcr_bank: &mut env.pcr_bank,
+            };
+
+        let info = Self::verify_image(&mut venv, &manifest)?;
 
         cprintln!(
             "[update-reset] Image verified using Vendor ECC Key Index {}",
             info.vendor_ecc_pub_key_idx
         );
 
-        Self::load_image(env, &manifest, recv_txn)?;
+        Self::load_image(&manifest, recv_txn)?;
 
         Self::copy_regions(&manifest);
         cprintln!("[update-reset Success] --");
@@ -82,12 +92,11 @@ impl UpdateResetFlow {
     /// * 'manifest'- Manifest
     ///
     fn verify_image(
-        env: &mut RomEnv,
+        env: &mut RomImageVerificationEnv,
         manifest: &ImageManifest,
     ) -> CaliptraResult<ImageVerificationInfo> {
-        let venv = RomImageVerificationEnv::new(env);
 
-        let mut verifier = ImageVerifier::new(venv);
+        let mut verifier: ImageVerifier<RomImageVerificationEnv, _> = ImageVerifier::new(env);
 
         let info = verifier.verify(manifest, (), ResetReason::UpdateReset)?;
 
@@ -139,7 +148,6 @@ impl UpdateResetFlow {
     /// * `manifest` - Manifest
     /// * `txn`      - Mailbox Receive Transaction
     fn load_image(
-        _env: &RomEnv,
         manifest: &ImageManifest,
         mut txn: MailboxRecvTxn,
     ) -> CaliptraResult<()> {
@@ -171,7 +179,7 @@ impl UpdateResetFlow {
     /// # Returns
     ///
     /// * `Manifest` - Caliptra Image Bundle Manifest
-    fn load_manifest(txn: &MailboxRecvTxn) -> CaliptraResult<ImageManifest> {
+    fn load_manifest(txn: &mut MailboxRecvTxn) -> CaliptraResult<ImageManifest> {
         let slice = unsafe {
             let ptr = &mut MAN2_ORG as *mut u32;
             core::slice::from_raw_parts_mut(ptr, core::mem::size_of::<ImageManifest>() / 4)
