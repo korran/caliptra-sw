@@ -21,7 +21,7 @@ Note:
 
 --*/
 
-use crate::{rom_env::RomEnv, verifier::RomImageVerificationEnv};
+use crate::{verifier::RomImageVerificationEnv};
 use caliptra_drivers::{Array4x12, CaliptraResult, PcrId, Sha384, PcrBank};
 
 struct PcrExtender<'a> {

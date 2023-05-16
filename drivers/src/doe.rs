@@ -13,7 +13,7 @@ Abstract:
 --*/
 
 use crate::{wait, Array4x4, CaliptraResult, KeyId};
-use caliptra_registers::doe::{self, DoeReg};
+use caliptra_registers::doe::{DoeReg};
 
 pub struct DeobfuscationEngine {
     doe: DoeReg,

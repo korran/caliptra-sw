@@ -16,7 +16,7 @@ use crate::kv_access::{KvAccess, KvAccessErr};
 use crate::{
     array_concat3, caliptra_err_def, wait, Array4x12, CaliptraResult, KeyReadArgs, KeyWriteArgs,
 };
-use caliptra_registers::ecc::{self, EccReg};
+use caliptra_registers::ecc::{EccReg};
 
 /// ECC-384 Coordinate
 pub type Ecc384Scalar = Array4x12;

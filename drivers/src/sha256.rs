@@ -15,7 +15,7 @@ Abstract:
 use core::usize;
 
 use crate::{array::Array4x16, caliptra_err_def, wait, Array4x8, CaliptraResult};
-use caliptra_registers::sha256::{self, Sha256Reg};
+use caliptra_registers::sha256::{Sha256Reg};
 
 const SHA256_BLOCK_BYTE_SIZE: usize = 64;
 const SHA256_BLOCK_LEN_OFFSET: usize = 56;

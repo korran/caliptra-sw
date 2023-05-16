@@ -15,7 +15,7 @@ Abstract:
 use bitfield::bitfield;
 
 use crate::{caliptra_err_def, CaliptraResult};
-use caliptra_registers::kv::{self, KvReg};
+use caliptra_registers::kv::{KvReg};
 
 /// Key Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

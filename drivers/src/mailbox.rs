@@ -17,7 +17,7 @@ use caliptra_registers::mbox::MboxCsr;
 use caliptra_registers::mbox::enums::MboxFsmE;
 use caliptra_registers::mbox::{enums::MboxStatusE};
 use core::cmp::min;
-use core::mem::{size_of, self, ManuallyDrop};
+use core::mem::{size_of};
 
 caliptra_err_def! {
     Mailbox,

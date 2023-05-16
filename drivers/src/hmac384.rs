@@ -16,7 +16,7 @@ use crate::kv_access::{KvAccess, KvAccessErr};
 use crate::{
     array::Array4x32, caliptra_err_def, wait, Array4x12, CaliptraResult, KeyReadArgs, KeyWriteArgs,
 };
-use caliptra_registers::hmac::{self, HmacReg};
+use caliptra_registers::hmac::{HmacReg};
 use core::usize;
 
 const HMAC384_BLOCK_SIZE_BYTES: usize = 128;

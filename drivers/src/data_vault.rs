@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use caliptra_registers::dv::{self, DvReg};
+use caliptra_registers::dv::{DvReg};
 
 use crate::{Array4x12, Ecc384PubKey, Ecc384Signature};
 

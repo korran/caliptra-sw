@@ -23,10 +23,10 @@ Abstract:
 --*/
 use crate::{caliptra_err_def, wait, CaliptraResult};
 use caliptra_registers::{
-    csrng::{self, CsrngReg},
-    entropy_src::{self, regs::AlertFailCountsReadVal},
+    csrng::{CsrngReg},
+    entropy_src::{regs::AlertFailCountsReadVal},
 };
-use core::{iter::FusedIterator, marker::PhantomData, num::NonZeroUsize};
+use core::{iter::FusedIterator, num::NonZeroUsize};
 
 caliptra_err_def! {
     Csrng,

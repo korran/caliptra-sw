@@ -13,7 +13,7 @@ Abstract:
 --*/
 
 use crate::{caliptra_err_def, Array4x12, CaliptraResult, Sha384};
-use caliptra_registers::pv::{self, PvReg};
+use caliptra_registers::pv::{PvReg};
 
 /// PCR Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

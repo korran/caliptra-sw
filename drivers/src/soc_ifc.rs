@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use caliptra_registers::soc_ifc::{self, SocIfcReg};
+use caliptra_registers::soc_ifc::{SocIfcReg};
 use caliptra_registers::soc_ifc::enums::DeviceLifecycleE;
 
 use crate::FuseBank;
