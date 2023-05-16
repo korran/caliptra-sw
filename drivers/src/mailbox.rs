@@ -75,6 +75,19 @@ impl Mailbox {
         }
     }
 
+    /// Waits until the uC can acquire the lock to start sending data.
+    /// # Returns
+    /// * `MailboxSendTxn` - Object representing a send operation
+    pub fn wait_until_start_send_txn(&mut self) -> MailboxSendTxn {
+        let mbox = self.mbox.regs();
+        while mbox.lock().read().lock() {
+        }
+        MailboxSendTxn{
+            state: MailboxOpState::default(),
+            mbox: &mut self.mbox,
+        }
+    }
+
     /// Attempts to start receiving data by checking the status.
     /// # Returns
     /// * 'MailboxRecvTxn' - Object representing a receive operation
