@@ -19,10 +19,13 @@ pub fn panic(_info: &core::panic::PanicInfo) -> ! {
 #[no_mangle]
 extern "C" fn main() {
     let mut soc_ifc = unsafe { SocIfcReg::new() };
-    let mut mbox = unsafe { MboxCsr::new() } ;
+    let mut mbox = unsafe { MboxCsr::new() };
     let mbox = mbox.regs();
 
-    soc_ifc.regs().cptra_flow_status().write(|w| w.ready_for_fw(true));
+    soc_ifc
+        .regs()
+        .cptra_flow_status()
+        .write(|w| w.ready_for_fw(true));
 
     loop {
         while !mbox.status().read().mbox_fsm_ps().mbox_execute_uc() {

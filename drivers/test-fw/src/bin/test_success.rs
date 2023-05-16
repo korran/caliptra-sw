@@ -20,6 +20,10 @@ extern "C" fn main() {
         .at(0)
         .write(|_| b'S'.into());
     // 0xff means exit with success
-    soc_ifc.regs().cptra_generic_output_wires().at(0).write(|_| 0xff);
+    soc_ifc
+        .regs()
+        .cptra_generic_output_wires()
+        .at(0)
+        .write(|_| 0xff);
     loop {}
 }

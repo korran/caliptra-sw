@@ -31,7 +31,7 @@ pub(crate) struct RomImageVerificationEnv<'a> {
 
 impl<'a> RomImageVerificationEnv<'a> {
     pub fn new(env: &'a mut RomEnv) -> Self {
-        Self { 
+        Self {
             sha384: &mut env.sha384,
             sha384_acc: &mut env.sha384_acc,
             soc_ifc: &mut env.soc_ifc,

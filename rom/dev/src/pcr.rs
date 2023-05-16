@@ -21,8 +21,8 @@ Note:
 
 --*/
 
-use crate::{verifier::RomImageVerificationEnv};
-use caliptra_drivers::{Array4x12, CaliptraResult, PcrId, Sha384, PcrBank};
+use crate::verifier::RomImageVerificationEnv;
+use caliptra_drivers::{Array4x12, CaliptraResult, PcrBank, PcrId, Sha384};
 
 struct PcrExtender<'a> {
     pcr_bank: &'a mut PcrBank,
@@ -51,8 +51,7 @@ pub(crate) fn extend_pcr0(env: &mut RomImageVerificationEnv) -> CaliptraResult<(
     // Lock the PCR from clear
     env.pcr_bank.set_pcr_lock(caliptra_drivers::PcrId::PcrId0);
 
-
-    let mut pcr = PcrExtender{
+    let mut pcr = PcrExtender {
         pcr_bank: env.pcr_bank,
         sha384: env.sha384,
     };

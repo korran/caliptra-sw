@@ -13,7 +13,7 @@ Abstract:
 --*/
 
 use crate::{caliptra_err_def, Array4x12, CaliptraResult, Sha384};
-use caliptra_registers::pv::{PvReg};
+use caliptra_registers::pv::PvReg;
 
 /// PCR Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,14 +78,11 @@ caliptra_err_def! {
 /// Platform Configuration Register (PCR) Bank
 pub struct PcrBank {
     pv: PvReg,
-
 }
 
 impl PcrBank {
     pub fn new(pv: PvReg) -> Self {
-        Self {
-            pv,
-        }
+        Self { pv }
     }
     /// Erase all the pcrs in the pcr vault
     ///

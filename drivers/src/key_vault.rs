@@ -15,7 +15,7 @@ Abstract:
 use bitfield::bitfield;
 
 use crate::{caliptra_err_def, CaliptraResult};
-use caliptra_registers::kv::{KvReg};
+use caliptra_registers::kv::KvReg;
 
 /// Key Identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,9 +160,7 @@ pub struct KeyVault {
 
 impl KeyVault {
     pub fn new(kv: KvReg) -> Self {
-        KeyVault {
-            kv,
-        }
+        KeyVault { kv }
     }
     /// Erase all the keys in the key vault
     ///
@@ -202,7 +200,6 @@ impl KeyVault {
             KeyId::KeyId30,
             KeyId::KeyId31,
         ];
-
 
         for id in KEY_IDS {
             if !self.key_use_lock(id) && !self.key_write_lock(id) {

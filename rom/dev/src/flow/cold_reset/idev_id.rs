@@ -174,7 +174,11 @@ impl InitDevIdLayer {
     /// # Returns
     ///
     /// * `Ecc384KeyPair` - Derive DICE Layer Key Pair
-    fn derive_key_pair(env: &mut RomEnv, cdi: KeyId, priv_key: KeyId) -> CaliptraResult<Ecc384KeyPair> {
+    fn derive_key_pair(
+        env: &mut RomEnv,
+        cdi: KeyId,
+        priv_key: KeyId,
+    ) -> CaliptraResult<Ecc384KeyPair> {
         Crypto::ecc384_key_gen(env, cdi, priv_key)
     }
 

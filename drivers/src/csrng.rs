@@ -22,10 +22,7 @@ Abstract:
 
 --*/
 use crate::{caliptra_err_def, wait, CaliptraResult};
-use caliptra_registers::{
-    csrng::{CsrngReg},
-    entropy_src::{regs::AlertFailCountsReadVal},
-};
+use caliptra_registers::{csrng::CsrngReg, entropy_src::regs::AlertFailCountsReadVal};
 use core::{iter::FusedIterator, num::NonZeroUsize};
 
 caliptra_err_def! {
@@ -63,7 +60,10 @@ impl Csrng {
     /// # Errors
     ///
     /// Returns an error if the internal seed command fails.
-    pub fn new(csrng: caliptra_registers::csrng::CsrngReg, entropy_src: caliptra_registers::entropy_src::EntropySrcReg) -> CaliptraResult<Self> {
+    pub fn new(
+        csrng: caliptra_registers::csrng::CsrngReg,
+        entropy_src: caliptra_registers::entropy_src::EntropySrcReg,
+    ) -> CaliptraResult<Self> {
         Self::with_seed(csrng, entropy_src, Seed::EntropySrc)
     }
 
@@ -76,16 +76,17 @@ impl Csrng {
     /// # Errors
     ///
     /// Returns an error if the internal seed command fails.
-    pub fn with_seed(csrng: caliptra_registers::csrng::CsrngReg, entropy_src: caliptra_registers::entropy_src::EntropySrcReg, seed: Seed) -> CaliptraResult<Self> {
+    pub fn with_seed(
+        csrng: caliptra_registers::csrng::CsrngReg,
+        entropy_src: caliptra_registers::entropy_src::EntropySrcReg,
+        seed: Seed,
+    ) -> CaliptraResult<Self> {
         const FALSE: u32 = MultiBitBool::False as u32;
         const TRUE: u32 = MultiBitBool::True as u32;
 
         // Configure and enable entropy_src if needed.
 
-        let mut result = Self {
-            csrng,
-            entropy_src,
-        };
+        let mut result = Self { csrng, entropy_src };
         let c = result.csrng.regs();
         let e = result.entropy_src.regs();
 
@@ -97,7 +98,7 @@ impl Csrng {
         }
 
         if c.ctrl().read().enable() == FALSE {
-           c.ctrl()
+            c.ctrl()
                 .write(|w| w.enable(TRUE).sw_app_enable(TRUE).read_int_state(TRUE));
         }
 
@@ -321,10 +322,10 @@ fn send_command(csrng: &mut CsrngReg, command: Command) -> CaliptraResult<()> {
     let clen = (clen as u32) & 0xf;
     let flag0 = (flag0 as u32) & 0xf;
     let glen = (glen as u32) & 0x1fff;
-    
 
     // Write mandatory 32-bit command header.
-    csrng.regs()
+    csrng
+        .regs()
         .cmd_req()
         .write(|_| (glen << 12) | (flag0 << 8) | (clen << 4) | acmd);
 

@@ -15,8 +15,8 @@ Abstract:
 #![no_std]
 #![no_main]
 
-use caliptra_test_harness::test_suite;
 use caliptra_registers::mbox::MboxCsr;
+use caliptra_test_harness::test_suite;
 
 fn test_mbox_cmd() {
     let mut mbox = unsafe { MboxCsr::new() };

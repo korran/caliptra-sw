@@ -280,10 +280,7 @@ fn test_kv_seed_from_kv_msg_from_input() {
 
 fn test_kat() {
     let mut ecc = unsafe { Ecc384::new(EccReg::new()) };
-    assert_eq!(
-        Ecc384Kat::default().execute(&mut ecc).is_ok(),
-        true
-    );
+    assert_eq!(Ecc384Kat::default().execute(&mut ecc).is_ok(), true);
 }
 
 test_suite! {

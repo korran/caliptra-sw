@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use core::{num::NonZeroU32, borrow::BorrowMut, marker::PhantomData};
+use core::{borrow::BorrowMut, marker::PhantomData, num::NonZeroU32};
 
 use crate::*;
 use caliptra_drivers::*;
@@ -106,9 +106,9 @@ impl<Env: ImageVerificationEnv, Borrow: BorrowMut<Env>> ImageVerifier<Env, Borro
     ///
     /// * `env` - Environment
     pub fn new(env: Borrow) -> Self {
-        Self { 
+        Self {
             env,
-            _phantom: Default::default()
+            _phantom: Default::default(),
         }
     }
 

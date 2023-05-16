@@ -221,10 +221,7 @@ fn test_op8() {
 
 fn test_kat() {
     let mut sha = unsafe { Sha256::new(Sha256Reg::new()) };
-    assert_eq!(
-        Sha256Kat::default().execute(&mut sha).is_ok(),
-        true
-    );
+    assert_eq!(Sha256Kat::default().execute(&mut sha).is_ok(), true);
 }
 
 test_suite! {

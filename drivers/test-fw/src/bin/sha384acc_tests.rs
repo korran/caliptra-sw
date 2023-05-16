@@ -17,9 +17,9 @@ Abstract:
 
 use caliptra_drivers::{Array4x12, Mailbox, Sha384Acc};
 use caliptra_kat::Sha384AccKat;
-use caliptra_test_harness::test_suite;
-use caliptra_registers::sha512_acc::Sha512AccCsr;
 use caliptra_registers::mbox::MboxCsr;
+use caliptra_registers::sha512_acc::Sha512AccCsr;
+use caliptra_test_harness::test_suite;
 
 const MAX_MAILBOX_CAPACITY_BYTES: usize = 128 << 10;
 const SHA384_HASH_SIZE: usize = 48;
@@ -193,12 +193,7 @@ fn test_digest_max_mailbox_size() {
 
 fn test_kat() {
     let mut sha_acc = unsafe { Sha384Acc::new(Sha512AccCsr::new()) };
-    assert_eq!(
-        Sha384AccKat::default()
-            .execute(&mut sha_acc)
-            .is_ok(),
-        true
-    );
+    assert_eq!(Sha384AccKat::default().execute(&mut sha_acc).is_ok(), true);
 }
 
 test_suite! {

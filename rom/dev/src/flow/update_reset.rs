@@ -60,15 +60,14 @@ impl UpdateResetFlow {
 
         let manifest = Self::load_manifest(&mut recv_txn)?;
 
-        let mut venv =
-            RomImageVerificationEnv{
-                sha384: &mut env.sha384,
-                sha384_acc: &mut env.sha384_acc,
-                soc_ifc: &mut env.soc_ifc,
-                ecc384: &mut env.ecc384,
-                data_vault: &mut env.data_vault,
-                pcr_bank: &mut env.pcr_bank,
-            };
+        let mut venv = RomImageVerificationEnv {
+            sha384: &mut env.sha384,
+            sha384_acc: &mut env.sha384_acc,
+            soc_ifc: &mut env.soc_ifc,
+            ecc384: &mut env.ecc384,
+            data_vault: &mut env.data_vault,
+            pcr_bank: &mut env.pcr_bank,
+        };
 
         let info = Self::verify_image(&mut venv, &manifest)?;
 
@@ -95,7 +94,6 @@ impl UpdateResetFlow {
         env: &mut RomImageVerificationEnv,
         manifest: &ImageManifest,
     ) -> CaliptraResult<ImageVerificationInfo> {
-
         let mut verifier: ImageVerifier<RomImageVerificationEnv, _> = ImageVerifier::new(env);
 
         let info = verifier.verify(manifest, (), ResetReason::UpdateReset)?;
@@ -147,10 +145,7 @@ impl UpdateResetFlow {
     /// * `env`      - ROM Environment
     /// * `manifest` - Manifest
     /// * `txn`      - Mailbox Receive Transaction
-    fn load_image(
-        manifest: &ImageManifest,
-        mut txn: MailboxRecvTxn,
-    ) -> CaliptraResult<()> {
+    fn load_image(manifest: &ImageManifest, mut txn: MailboxRecvTxn) -> CaliptraResult<()> {
         cprintln!(
             "[update-reset] Loading Runtime at address 0x{:08x} len {}",
             manifest.runtime.load_addr,

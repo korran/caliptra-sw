@@ -35,7 +35,10 @@ fn test_report_idevid_csr_ready() {
     let mut soc_ifc = unsafe { SocIfcReg::new() };
     SocIfc::new(soc_ifc).flow_status_set_idevid_csr_ready();
     let mut soc_ifc = unsafe { SocIfcReg::new() };
-    assert_eq!(0x0800_0000, soc_ifc.regs().cptra_flow_status().read().status());
+    assert_eq!(
+        0x0800_0000,
+        soc_ifc.regs().cptra_flow_status().read().status()
+    );
 }
 
 fn test_report_ready_for_firmware() {

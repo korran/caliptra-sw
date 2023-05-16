@@ -17,7 +17,7 @@ Abstract:
 
 use caliptra_drivers::{Array4x12, PcrBank, PcrId, Sha384};
 use caliptra_kat::Sha384Kat;
-use caliptra_registers::{sha512::Sha512Reg, pv::PvReg};
+use caliptra_registers::{pv::PvReg, sha512::Sha512Reg};
 
 use caliptra_test_harness::test_suite;
 
@@ -380,10 +380,7 @@ fn test_pcr_hash_extend_limit() {
 fn test_kat() {
     let mut sha384 = unsafe { Sha384::new(Sha512Reg::new()) };
 
-    assert_eq!(
-        Sha384Kat::default().execute(&mut sha384).is_ok(),
-        true
-    );
+    assert_eq!(Sha384Kat::default().execute(&mut sha384).is_ok(), true);
 }
 
 test_suite! {

@@ -16,7 +16,7 @@ use crate::kv_access::{KvAccess, KvAccessErr};
 use crate::{
     array::Array4x32, caliptra_err_def, wait, Array4x12, CaliptraResult, KeyReadArgs, KeyWriteArgs,
 };
-use caliptra_registers::hmac::{HmacReg};
+use caliptra_registers::hmac::HmacReg;
 use core::usize;
 
 const HMAC384_BLOCK_SIZE_BYTES: usize = 128;
@@ -149,9 +149,7 @@ pub struct Hmac384 {
 
 impl Hmac384 {
     pub fn new(hmac: HmacReg) -> Self {
-        Self {
-            hmac
-        }
+        Self { hmac }
     }
     /// Initialize multi step HMAC operation
     ///
@@ -318,7 +316,12 @@ impl Hmac384 {
         self.hmac_op(true)
     }
 
-    fn hmac_partial_block(&mut self, slice: &[u8], first: bool, buf_size: usize) -> CaliptraResult<()> {
+    fn hmac_partial_block(
+        &mut self,
+        slice: &[u8],
+        first: bool,
+        buf_size: usize,
+    ) -> CaliptraResult<()> {
         /// Set block length
         fn set_block_len(buf_size: usize, block: &mut [u8; HMAC384_BLOCK_SIZE_BYTES]) {
             let bit_len = ((buf_size + HMAC384_BLOCK_SIZE_BYTES) as u128) << 3;

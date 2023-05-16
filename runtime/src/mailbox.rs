@@ -8,9 +8,7 @@ pub struct Mailbox {
 
 impl Mailbox {
     pub fn new(mbox: MboxCsr) -> Self {
-        Self {
-            mbox,
-        }
+        Self { mbox }
     }
     /// Check if there is a new command to be executed
     pub fn is_cmd_ready(&mut self) -> bool {

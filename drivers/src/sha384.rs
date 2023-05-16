@@ -17,7 +17,7 @@ use core::usize;
 use crate::kv_access::{KvAccess, KvAccessErr};
 use crate::PcrId;
 use crate::{array::Array4x32, caliptra_err_def, wait, Array4x12, CaliptraResult};
-use caliptra_registers::sha512::{Sha512Reg};
+use caliptra_registers::sha512::Sha512Reg;
 
 const SHA384_BLOCK_BYTE_SIZE: usize = 128;
 const SHA384_BLOCK_LEN_OFFSET: usize = 112;
@@ -59,9 +59,7 @@ pub struct Sha384 {
 
 impl Sha384 {
     pub fn new(sha512: Sha512Reg) -> Self {
-        Self {
-            sha512,
-        }
+        Self { sha512 }
     }
     /// Initialize multi step digest operation
     ///

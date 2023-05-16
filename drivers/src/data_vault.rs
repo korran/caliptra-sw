@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use caliptra_registers::dv::{DvReg};
+use caliptra_registers::dv::DvReg;
 
 use crate::{Array4x12, Ecc384PubKey, Ecc384Signature};
 
@@ -184,10 +184,7 @@ pub struct DataVault {
 
 impl DataVault {
     pub fn new(dv: DvReg) -> Self {
-        Self { 
-            dv,
-        }
-         
+        Self { dv }
     }
     /// Set the ldev dice signature.
     ///

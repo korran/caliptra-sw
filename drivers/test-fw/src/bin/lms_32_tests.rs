@@ -55,7 +55,13 @@ fn test_hash_message_32() {
     let lms_q: u32 = 0xa;
     let q_str = lms_q.to_be_bytes();
 
-    let result = hash_message::<32>(&mut sha256, &message, &lms_public_identifier, &q_str, &final_c);
+    let result = hash_message::<32>(
+        &mut sha256,
+        &message,
+        &lms_public_identifier,
+        &q_str,
+        &final_c,
+    );
     let expected = HashValue::from([
         197, 161, 71, 71, 171, 172, 219, 132, 181, 174, 255, 248, 113, 57, 175, 182, 199, 253, 140,
         213, 215, 42, 14, 95, 56, 156, 32, 130, 218, 23, 63, 40,
@@ -265,7 +271,14 @@ fn test_ots_32() {
 
     let q_str = lms_q.to_be_bytes();
 
-    let result = hash_message::<32>(&mut sha256, &message, &lms_public_identifier, &q_str, &final_c).unwrap();
+    let result = hash_message::<32>(
+        &mut sha256,
+        &message,
+        &lms_public_identifier,
+        &q_str,
+        &final_c,
+    )
+    .unwrap();
     let expected = HashValue::from([
         197, 161, 71, 71, 171, 172, 219, 132, 181, 174, 255, 248, 113, 57, 175, 182, 199, 253, 140,
         213, 215, 42, 14, 95, 56, 156, 32, 130, 218, 23, 63, 40,

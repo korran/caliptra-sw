@@ -21,7 +21,10 @@ use caliptra_drivers::{
     DataVault, DeobfuscationEngine, Ecc384, Hmac384, KeyVault, Mailbox, PcrBank, Sha1, Sha256,
     Sha384, Sha384Acc, SocIfc,
 };
-use caliptra_registers::{sha256::Sha256Reg, sha512::Sha512Reg, sha512_acc::Sha512AccCsr, hmac::HmacReg, ecc::EccReg, kv::KvReg, dv::DvReg, soc_ifc::SocIfcReg, mbox::MboxCsr, pv::PvReg, doe::DoeReg};
+use caliptra_registers::{
+    doe::DoeReg, dv::DvReg, ecc::EccReg, hmac::HmacReg, kv::KvReg, mbox::MboxCsr, pv::PvReg,
+    sha256::Sha256Reg, sha512::Sha512Reg, sha512_acc::Sha512AccCsr, soc_ifc::SocIfcReg,
+};
 
 const ICCM_START: u32 = 0x40000000;
 const ICCM_SIZE: u32 = 128 << 10;
@@ -66,7 +69,7 @@ pub struct RomEnv {
 }
 
 impl RomEnv {
-    pub const ICCM_RANGE: Range<u32> = Range{
+    pub const ICCM_RANGE: Range<u32> = Range {
         start: ICCM_START,
         end: ICCM_START + ICCM_SIZE,
     };

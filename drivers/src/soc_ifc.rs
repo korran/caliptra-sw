@@ -12,8 +12,8 @@ Abstract:
 
 --*/
 
-use caliptra_registers::soc_ifc::{SocIfcReg};
 use caliptra_registers::soc_ifc::enums::DeviceLifecycleE;
+use caliptra_registers::soc_ifc::SocIfcReg;
 
 use crate::FuseBank;
 
@@ -52,9 +52,7 @@ pub struct SocIfc {
 
 impl SocIfc {
     pub fn new(soc_ifc: SocIfcReg) -> Self {
-        Self {
-            soc_ifc,
-        }
+        Self { soc_ifc }
     }
     /// Retrieve the device lifecycle state
     pub fn lifecycle(&mut self) -> Lifecycle {
@@ -121,7 +119,7 @@ impl SocIfc {
     }
 
     pub fn fuse_bank(&mut self) -> FuseBank {
-        FuseBank{
+        FuseBank {
             soc_ifc: &mut self.soc_ifc,
         }
     }

@@ -6,9 +6,9 @@
 #![no_std]
 
 // Needed to bring in startup code
+use caliptra_registers::soc_ifc::SocIfcReg;
 #[allow(unused)]
 use caliptra_test_harness::println;
-use caliptra_registers::soc_ifc::SocIfcReg;
 
 #[panic_handler]
 pub fn panic(_info: &core::panic::PanicInfo) -> ! {

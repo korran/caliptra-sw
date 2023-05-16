@@ -26,8 +26,9 @@ use crate::{cprint, cprintln, pcr};
 use crate::{rom_env::RomEnv, rom_err_def};
 use caliptra_common::dice;
 use caliptra_drivers::{
-    okref, Array4x12, CaliptraResult, ColdResetEntry4, ColdResetEntry48, Hmac384Data, Hmac384Key,
-    KeyId, KeyReadArgs, Lifecycle, MailboxRecvTxn, ResetReason, WarmResetEntry4, WarmResetEntry48, Mailbox, SocIfc, DataVault,
+    okref, Array4x12, CaliptraResult, ColdResetEntry4, ColdResetEntry48, DataVault, Hmac384Data,
+    Hmac384Key, KeyId, KeyReadArgs, Lifecycle, Mailbox, MailboxRecvTxn, ResetReason, SocIfc,
+    WarmResetEntry4, WarmResetEntry48,
 };
 use caliptra_image_types::{ImageManifest, IMAGE_BYTE_SIZE};
 use caliptra_image_verify::{ImageVerificationInfo, ImageVerifier};
@@ -70,20 +71,18 @@ impl DiceLayer for FmcAliasLayer {
         let manifest = Self::load_manifest(&mut txn);
         let manifest = okref(&manifest)?;
 
-        let mut venv =
-            RomImageVerificationEnv{
-                sha384: &mut env.sha384,
-                sha384_acc: &mut env.sha384_acc,
-                soc_ifc: &mut env.soc_ifc,
-                ecc384: &mut env.ecc384,
-                data_vault: &mut env.data_vault,
-                pcr_bank: &mut env.pcr_bank,
-            };
+        let mut venv = RomImageVerificationEnv {
+            sha384: &mut env.sha384,
+            sha384_acc: &mut env.sha384_acc,
+            soc_ifc: &mut env.soc_ifc,
+            ecc384: &mut env.ecc384,
+            data_vault: &mut env.data_vault,
+            pcr_bank: &mut env.pcr_bank,
+        };
 
         // Verify the image
         let info = Self::verify_image(&mut venv, manifest);
         let info = okref(&info)?;
-
 
         // populate data vault
         Self::populate_data_vault(venv.data_vault, info);
@@ -169,7 +168,10 @@ impl FmcAliasLayer {
     /// report_error is called. This prevents a race condition where the SoC
     /// reads FW_ERROR_NON_FATAL immediately after the mailbox transaction
     /// fails, but before caliptra has set the FW_ERROR_NON_FATAL register.
-    fn download_image<'a>(soc_ifc: &mut SocIfc, mbox: &'a mut Mailbox) -> CaliptraResult<ManuallyDrop<MailboxRecvTxn<'a>>> {
+    fn download_image<'a>(
+        soc_ifc: &mut SocIfc,
+        mbox: &'a mut Mailbox,
+    ) -> CaliptraResult<ManuallyDrop<MailboxRecvTxn<'a>>> {
         soc_ifc.flow_status_set_ready_for_firmware();
 
         cprint!("[afmc] Waiting for Image ");
@@ -180,7 +182,7 @@ impl FmcAliasLayer {
                     txn.start_txn().complete(false)?;
                     continue;
                 }
-                
+
                 // Re-borrow mailbox to work around https://github.com/rust-lang/rust/issues/54663
                 let txn = mbox.peek_recv().ok_or(err_u32!(MailboxStateInconsistent))?;
 
@@ -243,10 +245,7 @@ impl FmcAliasLayer {
     /// * `env`      - ROM Environment
     /// * `manifest` - Manifest
     /// * `txn`      - Mailbox Receive Transaction
-    fn load_image(
-        manifest: &ImageManifest,
-        txn: &mut MailboxRecvTxn,
-    ) -> CaliptraResult<()> {
+    fn load_image(manifest: &ImageManifest, txn: &mut MailboxRecvTxn) -> CaliptraResult<()> {
         cprintln!(
             "[afmc] Loading FMC at address 0x{:08x} len {}",
             manifest.fmc.load_addr,
@@ -283,17 +282,13 @@ impl FmcAliasLayer {
     /// * `env`  - ROM Environment
     /// * `info` - Image Verification Info
     fn populate_data_vault(data_vault: &mut DataVault, info: &ImageVerificationInfo) {
-        data_vault
-            .write_cold_reset_entry48(ColdResetEntry48::FmcTci, &info.fmc.digest.into());
+        data_vault.write_cold_reset_entry48(ColdResetEntry48::FmcTci, &info.fmc.digest.into());
 
-        data_vault
-            .write_cold_reset_entry4(ColdResetEntry4::FmcSvn, info.fmc.svn);
+        data_vault.write_cold_reset_entry4(ColdResetEntry4::FmcSvn, info.fmc.svn);
 
-        data_vault
-            .write_cold_reset_entry4(ColdResetEntry4::FmcLoadAddr, info.fmc.load_addr);
+        data_vault.write_cold_reset_entry4(ColdResetEntry4::FmcLoadAddr, info.fmc.load_addr);
 
-        data_vault
-            .write_cold_reset_entry4(ColdResetEntry4::FmcEntryPoint, info.fmc.entry_point);
+        data_vault.write_cold_reset_entry4(ColdResetEntry4::FmcEntryPoint, info.fmc.entry_point);
 
         data_vault.write_cold_reset_entry48(
             ColdResetEntry48::OwnerPubKeyHash,
@@ -305,17 +300,13 @@ impl FmcAliasLayer {
             info.vendor_ecc_pub_key_idx,
         );
 
-        data_vault
-            .write_warm_reset_entry48(WarmResetEntry48::RtTci, &info.runtime.digest.into());
+        data_vault.write_warm_reset_entry48(WarmResetEntry48::RtTci, &info.runtime.digest.into());
 
-        data_vault
-            .write_warm_reset_entry4(WarmResetEntry4::RtSvn, info.runtime.svn);
+        data_vault.write_warm_reset_entry4(WarmResetEntry4::RtSvn, info.runtime.svn);
 
-        data_vault
-            .write_warm_reset_entry4(WarmResetEntry4::RtLoadAddr, info.runtime.load_addr);
+        data_vault.write_warm_reset_entry4(WarmResetEntry4::RtLoadAddr, info.runtime.load_addr);
 
-        data_vault
-            .write_warm_reset_entry4(WarmResetEntry4::RtEntryPoint, info.runtime.entry_point);
+        data_vault.write_warm_reset_entry4(WarmResetEntry4::RtEntryPoint, info.runtime.entry_point);
 
         // TODO: Need a better way to get the Manifest address
         let slice = unsafe {
@@ -323,8 +314,7 @@ impl FmcAliasLayer {
             ptr as u32
         };
 
-        data_vault
-            .write_warm_reset_entry4(WarmResetEntry4::ManifestAddr, slice);
+        data_vault.write_warm_reset_entry4(WarmResetEntry4::ManifestAddr, slice);
     }
 
     /// Derive Composite Device Identity (CDI) from FMC measurements

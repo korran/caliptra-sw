@@ -436,10 +436,7 @@ fn test_hmac_multi_block_two_step() {
 
 fn test_kat() {
     let mut hmac384 = unsafe { Hmac384::new(HmacReg::new()) };
-    assert_eq!(
-        Hmac384Kat::default().execute(&mut hmac384).is_ok(),
-        true
-    );
+    assert_eq!(Hmac384Kat::default().execute(&mut hmac384).is_ok(), true);
 }
 
 test_suite! {

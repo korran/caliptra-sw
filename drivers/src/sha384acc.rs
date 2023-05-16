@@ -16,8 +16,8 @@ use crate::wait;
 use crate::Array4x12;
 use crate::CaliptraResult;
 
-use caliptra_registers::sha512_acc::Sha512AccCsr;
 use caliptra_registers::sha512_acc::regs::ExecuteWriteVal;
+use caliptra_registers::sha512_acc::Sha512AccCsr;
 
 /// Maximum mailbox capacity in Bytes.
 const MAX_MAILBOX_CAPACITY_BYTES: u32 = 128 << 10;
@@ -45,9 +45,7 @@ pub struct Sha384Acc {
 
 impl Sha384Acc {
     pub fn new(sha512_acc: Sha512AccCsr) -> Self {
-        Self {
-            sha512_acc,
-        }
+        Self { sha512_acc }
     }
     /// Acquire the SHA384 Accelerator lock.
     ///
@@ -65,7 +63,7 @@ impl Sha384Acc {
         if sha_acc.lock().read().lock() {
             None
         } else {
-            Some(Sha384AccOp{
+            Some(Sha384AccOp {
                 sha512_acc: &mut self.sha512_acc,
             })
         }
@@ -136,9 +134,7 @@ impl Sha384AccOp<'_> {
     /// * `buf` - Digest buffer
     fn copy_digest_to_buf(&mut self, buf: &mut Array4x12) -> CaliptraResult<()> {
         let sha_acc = self.sha512_acc.regs();
-        *buf = Array4x12::read_from_reg(
-           sha_acc.digest().truncate::<12>(),
-        );
+        *buf = Array4x12::read_from_reg(sha_acc.digest().truncate::<12>());
         Ok(())
     }
 }

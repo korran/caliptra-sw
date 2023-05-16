@@ -13,11 +13,11 @@ Abstract:
 --*/
 
 use crate::{caliptra_err_def, CaliptraResult};
-use caliptra_registers::mbox::MboxCsr;
 use caliptra_registers::mbox::enums::MboxFsmE;
-use caliptra_registers::mbox::{enums::MboxStatusE};
+use caliptra_registers::mbox::enums::MboxStatusE;
+use caliptra_registers::mbox::MboxCsr;
 use core::cmp::min;
-use core::mem::{size_of};
+use core::mem::size_of;
 
 caliptra_err_def! {
     Mailbox,
@@ -56,9 +56,7 @@ const MAX_MAILBOX_LEN: u32 = 128 * 1024;
 
 impl Mailbox {
     pub fn new(mbox: MboxCsr) -> Self {
-        Self {
-            mbox,
-        }
+        Self { mbox }
     }
     /// Attempt to acquire the lock to start sending data.
     /// # Returns
@@ -68,7 +66,7 @@ impl Mailbox {
         if mbox.lock().read().lock() {
             None
         } else {
-            Some(MailboxSendTxn{
+            Some(MailboxSendTxn {
                 state: MailboxOpState::default(),
                 mbox: &mut self.mbox,
             })
@@ -80,9 +78,8 @@ impl Mailbox {
     /// * `MailboxSendTxn` - Object representing a send operation
     pub fn wait_until_start_send_txn(&mut self) -> MailboxSendTxn {
         let mbox = self.mbox.regs();
-        while mbox.lock().read().lock() {
-        }
-        MailboxSendTxn{
+        while mbox.lock().read().lock() {}
+        MailboxSendTxn {
             state: MailboxOpState::default(),
             mbox: &mut self.mbox,
         }
@@ -94,7 +91,7 @@ impl Mailbox {
     pub fn try_start_recv_txn(&mut self) -> Option<MailboxRecvTxn> {
         let mbox = self.mbox.regs();
         match mbox.status().read().mbox_fsm_ps() {
-            MboxFsmE::MboxExecuteUc => Some(MailboxRecvTxn{
+            MboxFsmE::MboxExecuteUc => Some(MailboxRecvTxn {
                 state: MailboxOpState::Execute,
                 mbox: &mut self.mbox,
             }),
@@ -106,7 +103,7 @@ impl Mailbox {
     pub fn peek_recv(&mut self) -> Option<MailboxRecvPeek> {
         let mbox = self.mbox.regs();
         match mbox.status().read().mbox_fsm_ps() {
-            MboxFsmE::MboxExecuteUc => Some(MailboxRecvPeek{
+            MboxFsmE::MboxExecuteUc => Some(MailboxRecvPeek {
                 mbox: &mut self.mbox,
             }),
             _ => None,
@@ -131,7 +128,9 @@ impl Mailbox {
             // SoC firmware might be stuck waiting for Caliptra to finish
             // executing this pending mailbox transaction. Notify them that
             // we've failed.
-            mbox.regs().status().write(|w| w.status(|w| w.cmd_failure()));
+            mbox.regs()
+                .status()
+                .write(|w| w.status(|w| w.cmd_failure()));
         }
     }
 }
@@ -319,7 +318,7 @@ impl<'a> MailboxRecvPeek<'a> {
     }
 
     pub fn start_txn(self) -> MailboxRecvTxn<'a> {
-        MailboxRecvTxn{
+        MailboxRecvTxn {
             state: MailboxOpState::Execute,
             mbox: self.mbox,
         }
