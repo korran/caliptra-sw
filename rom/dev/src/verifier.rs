@@ -141,6 +141,6 @@ impl<'a> ImageVerificationEnv for RomImageVerificationEnv<'a> {
     }
 
     fn iccm_range(&self) -> Range<u32> {
-        self.iccm_range()
+        RomEnv::ICCM_RANGE
     }
 }

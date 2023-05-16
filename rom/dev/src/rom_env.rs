@@ -66,6 +66,11 @@ pub struct RomEnv {
 }
 
 impl RomEnv {
+    pub const ICCM_RANGE: Range<u32> = Range{
+        start: ICCM_START,
+        end: ICCM_START + ICCM_SIZE,
+    };
+
     pub unsafe fn new_from_registers() -> Self {
         Self {
             doe: DeobfuscationEngine::new(DoeReg::new()),
@@ -80,14 +85,6 @@ impl RomEnv {
             soc_ifc: SocIfc::new(SocIfcReg::new()),
             mbox: Mailbox::new(MboxCsr::new()),
             pcr_bank: PcrBank::new(PvReg::new()),
-        }
-    }
-
-    /// Get ICCM Range
-    pub fn iccm_range(&self) -> Range<u32> {
-        Range {
-            start: ICCM_START,
-            end: ICCM_START + ICCM_SIZE,
         }
     }
 }

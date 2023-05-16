@@ -10,6 +10,8 @@
 use caliptra_test_harness::println;
 
 use caliptra_registers::{self};
+use caliptra_registers::mbox::MboxCsr;
+use caliptra_registers::soc_ifc::SocIfcReg;
 
 #[panic_handler]
 pub fn panic(_info: &core::panic::PanicInfo) -> ! {
@@ -42,9 +44,13 @@ const RESPONSES: [Response; 3] = [
 
 #[no_mangle]
 extern "C" fn main() {
-    let soc_ifc = caliptra_registers::soc_ifc::RegisterBlock::soc_ifc_reg();
+    let mut soc_ifc = unsafe { SocIfcReg::new() };
+    let soc_ifc = soc_ifc.regs();
+
+    let mut mbox = unsafe { MboxCsr::new() } ;
+    let mbox = mbox.regs();
+
     soc_ifc.cptra_flow_status().write(|w| w.ready_for_fw(true));
-    let mbox = caliptra_registers::mbox::RegisterBlock::mbox_csr();
 
     let mut response_iter = RESPONSES.iter().cycle();
     loop {

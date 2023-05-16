@@ -16,9 +16,11 @@ Abstract:
 #![no_main]
 
 use caliptra_test_harness::test_suite;
+use caliptra_registers::mbox::MboxCsr;
 
 fn test_mbox_cmd() {
-    caliptra_runtime::handle_mailbox_commands();
+    let mut mbox = unsafe { MboxCsr::new() };
+    caliptra_runtime::handle_mailbox_commands(mbox);
 }
 
 test_suite! {

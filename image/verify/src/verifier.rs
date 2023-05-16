@@ -113,7 +113,7 @@ impl<Env: ImageVerificationEnv, Borrow: BorrowMut<Env>> ImageVerifier<Env, Borro
     }
 
     fn env(&mut self) -> &mut Env {
-        self.env().borrow_mut()
+        self.env.borrow_mut()
     }
 
     /// Verify Caliptra image
