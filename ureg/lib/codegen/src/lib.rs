@@ -744,7 +744,7 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
     let mut meta_tokens = TokenStream::new();
     let mut block_tokens = TokenStream::new();
 
-    let mut block_instance_tokens = TokenStream::new();
+    let block_instance_tokens = TokenStream::new();
     let mut instance_type_tokens = TokenStream::new();
 
     if !block.block().registers.is_empty() {
@@ -759,11 +759,8 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
 
         for instance in block.block().instances.iter() {
             let name_camel = camel_ident(&instance.name);
-            let name = snake_ident(&instance.name);
             let addr = hex_literal(instance.address.into());
-            //block_instance_tokens.extend(quote! {
-            //    pub unsafe fn #name() -> Self { unsafe { Self::new(#addr as *mut #raw_ptr_type) } }
-            //});
+
             instance_type_tokens.extend(quote! {
                 pub struct #name_camel {
                     // Ensure the only way to create this is via Self::new()
