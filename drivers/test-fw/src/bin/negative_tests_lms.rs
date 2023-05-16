@@ -17,10 +17,14 @@ File contains test cases for LMS signature verification using SHA256/192.
 
 use caliptra_drivers::{
     verify_lms_signature, HashValue, LmotsSignature, LmsIdentifier, LmsSignature, Sha192Digest,
+    Sha256
 };
+use caliptra_registers::sha256::Sha256Reg;
 use caliptra_test_harness::test_suite;
 
 fn test_failures_lms_24() {
+    let mut sha256 = unsafe { Sha256::new(Sha256Reg::new()) };
+
     let message: [u8; 33] = [
         116, 104, 105, 115, 32, 105, 115, 32, 116, 104, 101, 32, 109, 101, 115, 115, 97, 103, 101,
         32, 73, 32, 119, 97, 110, 116, 32, 115, 105, 103, 110, 101, 100,
@@ -322,11 +326,12 @@ fn test_failures_lms_24() {
     };
 
     let success =
-        verify_lms_signature(15, &message, &lms_identifier, q, &lms_public_key, &lms_sig).unwrap();
+        verify_lms_signature(&mut sha256, 15, &message, &lms_identifier, q, &lms_public_key, &lms_sig).unwrap();
     assert_eq!(success, true);
 
     let new_message = "this is a different message".as_bytes();
     let should_fail = verify_lms_signature(
+        &mut sha256,
         15,
         &new_message,
         &lms_identifier,
@@ -339,11 +344,12 @@ fn test_failures_lms_24() {
 
     let new_lms: LmsIdentifier = [0u8; 16];
     let should_fail =
-        verify_lms_signature(15, &message, &new_lms, q, &lms_public_key, &lms_sig).unwrap();
+        verify_lms_signature(&mut sha256, 15, &message, &new_lms, q, &lms_public_key, &lms_sig).unwrap();
     assert_eq!(should_fail, false);
 
     let new_q = q + 1;
     let should_fail = verify_lms_signature(
+        &mut sha256,
         15,
         &message,
         &lms_identifier,
@@ -356,7 +362,7 @@ fn test_failures_lms_24() {
 
     let new_public_key = HashValue::from([0u8; 24]);
     let should_fail =
-        verify_lms_signature(15, &message, &lms_identifier, q, &new_public_key, &lms_sig).unwrap();
+        verify_lms_signature(&mut sha256, 15, &message, &lms_identifier, q, &new_public_key, &lms_sig).unwrap();
     assert_eq!(should_fail, false);
 
     let new_ots = LmotsSignature {
@@ -372,6 +378,7 @@ fn test_failures_lms_24() {
         lms_path: &[HashValue::from([0u8; 24]); 15],
     };
     let should_fail = verify_lms_signature(
+        &mut sha256,
         15,
         &message,
         &lms_identifier,
