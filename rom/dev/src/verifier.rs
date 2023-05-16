@@ -29,19 +29,6 @@ pub(crate) struct RomImageVerificationEnv<'a> {
     pub(crate) pcr_bank: &'a mut PcrBank,
 }
 
-impl<'a> RomImageVerificationEnv<'a> {
-    pub fn new(env: &'a mut RomEnv) -> Self {
-        Self {
-            sha384: &mut env.sha384,
-            sha384_acc: &mut env.sha384_acc,
-            soc_ifc: &mut env.soc_ifc,
-            ecc384: &mut env.ecc384,
-            data_vault: &mut env.data_vault,
-            pcr_bank: &mut env.pcr_bank,
-        }
-    }
-}
-
 impl<'a> ImageVerificationEnv for RomImageVerificationEnv<'a> {
     type Image = ();
 

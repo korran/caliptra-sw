@@ -769,9 +769,12 @@ pub fn generate_code(block: &ValidatedRegisterBlock, options: Options) -> TokenS
                 impl #name_camel {
                     pub const PTR: *mut #raw_ptr_type = #addr as *mut #raw_ptr_type;
 
-                    /// Safety
+                    /// # Safety
                     ///
-                    /// Caller must ensure that only one instance of this type exists.
+                    /// Caller must ensure that all concurrent use of this
+                    /// peripheral in the firmware is done so in a compatible
+                    /// way. The simplest way to enforce this is to only call
+                    /// this function once.
                     pub unsafe fn new() -> Self {
                         Self{
                             _priv: (),
