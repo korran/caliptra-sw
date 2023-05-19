@@ -22,6 +22,7 @@ extern "C" {
 use caliptra_common::FirmwareHandoffTable;
 use caliptra_drivers::DataVault;
 use caliptra_drivers::Mailbox;
+use caliptra_registers::dv::DvReg;
 use caliptra_x509::{Ecdsa384CertBuilder, Ecdsa384Signature, FmcAliasCertTbs, LocalDevIdCertTbs};
 use zerocopy::FromBytes;
 
@@ -112,7 +113,7 @@ fn create_certs() {
     //
 
     // Retrieve the public key and signature from the data vault.
-    let data_vault = DataVault::default();
+    let data_vault = unsafe { DataVault::new(DvReg::new()) };
     let ldevid_pub_key = data_vault.ldev_dice_pub_key();
     let mut _pub_der: [u8; 97] = ldevid_pub_key.to_der();
     cprint_slice!("[fmc] LDEVID PUBLIC KEY DER", _pub_der);

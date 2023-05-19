@@ -264,6 +264,7 @@ dependencies = [
  "caliptra-cpu",
  "caliptra-drivers",
  "caliptra-hw-model",
+ "caliptra-registers",
  "caliptra-x509",
  "caliptra_common",
  "cfg-if",
@@ -429,6 +430,7 @@ dependencies = [
  "caliptra-image-types",
  "caliptra-image-verify",
  "caliptra-kat",
+ "caliptra-registers",
  "caliptra-x509",
  "caliptra_common",
  "cfg-if",
@@ -444,6 +446,7 @@ version = "0.1.0"
 dependencies = [
  "caliptra-cpu",
  "caliptra-drivers",
+ "caliptra-registers",
  "caliptra-x509",
  "caliptra_common",
  "cfg-if",
