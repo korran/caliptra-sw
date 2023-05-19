@@ -45,12 +45,7 @@ pub struct RegisterBlock<TMmio: ureg::Mmio + core::borrow::Borrow<TMmio>> {
     ptr: *mut u32,
     mmio: TMmio,
 }
-impl RegisterBlock<ureg::RealMmioMut<'_>> {
-    /// Deprecated; use [`SocIfcReg::new()`] instead.
-    pub fn soc_ifc_reg() -> Self {
-        unsafe { Self::new(0x30030000 as *mut u32) }
-    }
-}
+impl RegisterBlock<ureg::RealMmioMut<'_>> {}
 impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<TMmio> {
     /// # Safety
     ///

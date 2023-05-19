@@ -45,12 +45,7 @@ pub struct RegisterBlock<TMmio: ureg::Mmio + core::borrow::Borrow<TMmio>> {
     ptr: *mut u32,
     mmio: TMmio,
 }
-impl RegisterBlock<ureg::RealMmioMut<'_>> {
-    /// Deprecated; use [`Sha256Reg::new()`] instead.
-    pub fn sha256_reg() -> Self {
-        unsafe { Self::new(0x10028000 as *mut u32) }
-    }
-}
+impl RegisterBlock<ureg::RealMmioMut<'_>> {}
 impl<TMmio: ureg::Mmio + core::default::Default> RegisterBlock<TMmio> {
     /// # Safety
     ///

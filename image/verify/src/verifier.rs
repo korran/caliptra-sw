@@ -12,7 +12,7 @@ Abstract:
 
 --*/
 
-use core::num::NonZeroU32;
+use core::{borrow::BorrowMut, marker::PhantomData, num::NonZeroU32};
 
 use crate::*;
 use caliptra_drivers::*;
@@ -94,19 +94,27 @@ struct ImageInfo<'a> {
 }
 
 /// Image Verifier
-pub struct ImageVerifier<Env: ImageVerificationEnv> {
+pub struct ImageVerifier<Env: ImageVerificationEnv, Borrow: BorrowMut<Env>> {
     /// Verifiaction Environment
-    env: Env,
+    env: Borrow,
+    _phantom: PhantomData<Env>,
 }
 
-impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
+impl<Env: ImageVerificationEnv, Borrow: BorrowMut<Env>> ImageVerifier<Env, Borrow> {
     /// Create a new instance `ImageVerifier`
     ///
     /// # Arguments
     ///
     /// * `env` - Environment
-    pub fn new(env: Env) -> Self {
-        Self { env }
+    pub fn new(env: Borrow) -> Self {
+        Self {
+            env,
+            _phantom: Default::default(),
+        }
+    }
+
+    fn env(&mut self) -> &mut Env {
+        self.env.borrow_mut()
     }
 
     /// Verify Caliptra image
@@ -225,7 +233,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         const LAST_KEY_IDX: u32 = VENDOR_ECC_KEY_COUNT - 1;
 
         let key_idx = preamble.vendor_ecc_pub_key_idx;
-        let revocation = self.env.vendor_pub_key_revocation();
+        let revocation = self.env().vendor_pub_key_revocation();
 
         match key_idx {
             0..=SECOND_LAST_KEY_IDX => {
@@ -241,7 +249,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         }
 
         if reason == ResetReason::UpdateReset {
-            let expected = self.env.vendor_pub_key_idx_dv();
+            let expected = self.env().vendor_pub_key_idx_dv();
             if expected != key_idx {
                 raise_err!(UpdateResetVenPubKeyIdxMismatch)
             }
@@ -253,12 +261,12 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
     /// Verify vendor public key digest
     fn verify_vendor_pk_digest(&mut self) -> Result<(), NonZeroU32> {
         // We skip vendor public key check in unprovisioned state
-        if self.env.dev_lifecycle() == Lifecycle::Unprovisioned {
+        if self.env().dev_lifecycle() == Lifecycle::Unprovisioned {
             return Ok(());
         }
 
         // Read expected value from environment
-        let expected = self.env.vendor_pub_key_digest();
+        let expected = self.env().vendor_pub_key_digest();
 
         // Vendor public key digest must never be zero
         if expected == ZERO_DIGEST {
@@ -268,7 +276,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         let range = ImageManifest::vendor_pub_keys_range();
 
         let actual = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(VendorPubKeyDigestFailure))?;
 
@@ -287,18 +295,18 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         let range = ImageManifest::owner_pub_key_range();
 
         let actual = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(OwnerPubKeyDigestFailure))?;
 
-        let fuses_digest = self.env.owner_pub_key_digest_fuses();
+        let fuses_digest = self.env().owner_pub_key_digest_fuses();
 
         if fuses_digest != ZERO_DIGEST && fuses_digest != actual {
             raise_err!(OwnerPubKeyDigestMismatch)
         }
 
         if reason == ResetReason::UpdateReset {
-            let cold_boot_digest = self.env.owner_pub_key_digest_dv();
+            let cold_boot_digest = self.env().owner_pub_key_digest_dv();
             if cold_boot_digest != actual {
                 raise_err!(UpdateResetOwnerDigestFailure)
             }
@@ -316,7 +324,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         // Calculate the digest for the header
         let range = ImageManifest::header_range();
         let digest = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(HeaderDigestFailure))?;
 
@@ -358,7 +366,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         }
 
         let result = self
-            .env
+            .env()
             .ecc384_verify(digest, pub_key, sig)
             .map_err(|_| err_u32!(OwnerEccVerifyFailure))?;
 
@@ -384,7 +392,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         }
 
         let result = self
-            .env
+            .env()
             .ecc384_verify(digest, pub_key, sig)
             .map_err(|_| err_u32!(VendorEccVerifyFailure))?;
 
@@ -409,7 +417,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         let range = ImageManifest::toc_range();
 
         let actual = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(TocDigestFailures))?;
 
@@ -453,7 +461,8 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
     // Check if SVN check is required
     fn svn_check_required(&mut self) -> bool {
         // If device is unprovisioned or if anti-rollback is disabled, don't check the SVN.
-        !(self.env.dev_lifecycle() == Lifecycle::Unprovisioned || self.env.anti_rollback_disable())
+        !(self.env().dev_lifecycle() == Lifecycle::Unprovisioned
+            || self.env().anti_rollback_disable())
     }
 
     /// Verify FMC
@@ -465,7 +474,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         let range = verify_info.image_range();
 
         let actual = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(FmcDigestFailure))?;
 
@@ -475,14 +484,14 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
 
         // TODO: Perform following Address check
         // Entry Point is within the image
-        if !self.env.iccm_range().contains(&verify_info.load_addr) {
+        if !self.env().iccm_range().contains(&verify_info.load_addr) {
             raise_err!(FmcLoadAddrInvalid)
         }
         if verify_info.load_addr % 4 != 0 {
             raise_err!(FmcLoadAddrUnaligned)
         }
 
-        if !self.env.iccm_range().contains(&verify_info.entry_point) {
+        if !self.env().iccm_range().contains(&verify_info.entry_point) {
             raise_err!(FmcEntryPointInvalid)
         }
         if verify_info.entry_point % 4 != 0 {
@@ -498,12 +507,12 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
                 raise_err!(FmcSvnLessThanMinSupported)
             }
 
-            if verify_info.svn < self.env.fmc_svn() {
+            if verify_info.svn < self.env().fmc_svn() {
                 raise_err!(FmcSvnLessThanFuse)
             }
         }
 
-        if reason == ResetReason::UpdateReset && actual != self.env.get_fmc_digest_dv() {
+        if reason == ResetReason::UpdateReset && actual != self.env().get_fmc_digest_dv() {
             raise_err!(UpdateResetFmcDigestMismatch)
         }
 
@@ -526,7 +535,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         let range = verify_info.image_range();
 
         let actual = self
-            .env
+            .env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(RuntimeDigestFailure))?;
 
@@ -537,13 +546,13 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         // TODO: Perform following Address checks
         // 3. Entry Point is within the image
 
-        if !self.env.iccm_range().contains(&verify_info.load_addr) {
+        if !self.env().iccm_range().contains(&verify_info.load_addr) {
             raise_err!(RuntimeLoadAddrInvalid)
         }
         if verify_info.load_addr % 4 != 0 {
             raise_err!(RuntimeLoadAddrUnaligned)
         }
-        if !self.env.iccm_range().contains(&verify_info.entry_point) {
+        if !self.env().iccm_range().contains(&verify_info.entry_point) {
             raise_err!(RuntimeEntryPointInvalid)
         }
         if verify_info.entry_point % 4 != 0 {
@@ -559,7 +568,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
                 raise_err!(RuntimeSvnLessThanMinSupported)
             }
 
-            if verify_info.svn < self.env.runtime_svn() {
+            if verify_info.svn < self.env().runtime_svn() {
                 raise_err!(RuntimeSvnLessThanFuse)
             }
         }
@@ -585,7 +594,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
             raise_err!(VendorEccPubKeyIndexOutOfBounds)
         }
 
-        self.env
+        self.env()
             .sha384_digest(range.start, range.len() as u32)
             .map_err(|_| err_u32!(VendorPubKeyDigestFailure))
     }
