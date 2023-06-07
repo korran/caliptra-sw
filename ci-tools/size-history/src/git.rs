@@ -52,6 +52,8 @@ impl CommitInfo {
     }
 }
 
+pub fn is_log_linear()()
+
 pub fn commit_log() -> io::Result<Vec<CommitInfo>> {
     CommitInfo::parse_multiple(&bytes_to_string(run_cmd_stdout(
         Command::new("git")
