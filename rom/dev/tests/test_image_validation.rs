@@ -1166,6 +1166,7 @@ fn cert_test_with_custom_dates() {
         crate_name: "caliptra-rom-test-fmc",
         bin_name: "caliptra-rom-test-fmc",
         features: &["emu"],
+        workspace_dir: None,
     };
 
     let fuses = Fuses::default();
@@ -1245,6 +1246,7 @@ fn cert_test() {
         crate_name: "caliptra-rom-test-fmc",
         bin_name: "caliptra-rom-test-fmc",
         features: &["emu"],
+        workspace_dir: None,
     };
 
     let fuses = Fuses::default();
