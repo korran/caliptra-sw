@@ -1,5 +1,5 @@
 
-# Caliptra Firmware/Software
+# Caliptra's amazing Firmware/Software
 
 This repository contains firmware, libraries, and tools related to the
 [Caliptra Project](https://github.com/chipsalliance/caliptra).
