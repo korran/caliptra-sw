@@ -37,4 +37,5 @@ jobs:
 
       - name: Run size analysis (look at workflow "Summary" tab for results)
         run: |
+          export
           cargo run --release -p caliptra-size-history
