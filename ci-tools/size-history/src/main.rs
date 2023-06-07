@@ -18,7 +18,7 @@ mod http;
 mod process;
 mod util;
 
-use crate::cache_gha::GithubActionCache;
+use crate::{cache_gha::GithubActionCache, util::other_err};
 use crate::{
     cache::{Cache, FsCache},
     process::run_cmd_stdout,
@@ -56,9 +56,29 @@ fn real_main() -> io::Result<()> {
         FsCache::new(fs_cache_path.into()).map(box_cache)
     })?;
 
-    let git_commits = git::commit_log()?;
-
     let worktree = git::WorkTree::new(Path::new("/tmp/caliptra-size-history-wt"))?;
+
+    if !worktree.is_log_linear()? {
+        println!("git history is not linear; attempting to squash PR ");
+        let (Ok(pull_request_title), Ok(base_ref)) = (env::var("GITHUB_PR_TITLE"), env::var("GITHUB_BASE_REF")) else {
+            return Err(other_err("linear history not supported outside of a PR"));
+        };
+        /*
+        let rebase_onto: String = 
+        for merge_parents in worktree.merge_log() {
+            for parent in merge_parents {
+                if worktree.is_ancestor(parent.last().unwrap(), "main") {
+                    rebase
+                }
+            }
+        }
+        worktree.reset(&base_ref)?;
+        worktree.commit(&pull_request_title)?;
+        */
+    }
+
+    let git_commits = worktree.commit_log()?;
+
 
     env::set_current_dir(worktree.path)?;
 
@@ -89,15 +109,7 @@ fn real_main() -> io::Result<()> {
             "Building firmware at commit {}: {}",
             commit.id, commit.title
         );
-        run_cmd_stdout(
-            Command::new("git")
-                .current_dir(worktree.path)
-                .arg("checkout")
-                .arg("--no-recurse-submodule")
-                .arg("--quiet")
-                .arg(&commit.id),
-            None,
-        )?;
+        worktree.checkout(&commit.id)?;
 
         let sizes = match compute_size(
             &worktree,

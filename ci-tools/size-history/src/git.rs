@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     process::{run_cmd, run_cmd_stdout},
-    util::{bytes_to_string, expect_line, expect_line_with_prefix},
+    util::{bytes_to_string, expect_line, expect_line_with_prefix, other_err},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -52,16 +52,9 @@ impl CommitInfo {
     }
 }
 
-pub fn is_log_linear()()
 
-pub fn commit_log() -> io::Result<Vec<CommitInfo>> {
-    CommitInfo::parse_multiple(&bytes_to_string(run_cmd_stdout(
-        Command::new("git")
-            .arg("log")
-            .arg("--pretty=short")
-            .arg("--decorate=no"),
-        None,
-    )?)?)
+fn to_utf8(bytes: Vec<u8>) -> io::Result<String> {
+    String::from_utf8(bytes).map_err(|_| other_err("git output is not utf-8"))
 }
 
 pub struct WorkTree<'a> {
@@ -71,6 +64,85 @@ impl<'a> WorkTree<'a> {
     pub fn new(path: &'a Path) -> io::Result<Self> {
         run_cmd(Command::new("git").arg("worktree").arg("add").arg(path))?;
         Ok(Self { path })
+    }
+
+    pub fn is_log_linear(&self) -> io::Result<bool> {
+        let stdout = to_utf8(run_cmd_stdout(Command::new("git")
+            .current_dir(self.path)
+            .arg("rev-list")
+            .arg("--min-parents=2")
+            .arg("--count")
+            .arg("HEAD"), None)?)?;
+        Ok(stdout.trim() == "0")
+    }
+
+    pub fn commit_log(&self) -> io::Result<Vec<CommitInfo>> {
+        CommitInfo::parse_multiple(&bytes_to_string(run_cmd_stdout(
+            Command::new("git")
+                .current_dir(self.path)
+                .arg("log")
+                .arg("--pretty=short")
+                .arg("--decorate=no"),
+            None,
+        )?)?)
+    }
+
+    pub fn checkout(&self, commit_id: &str) -> io::Result<()> {
+        run_cmd_stdout(
+            Command::new("git")
+                .current_dir(self.path)
+                .arg("checkout")
+                .arg("--no-recurse-submodule")
+                .arg("--quiet")
+                .arg(commit_id),
+            None,
+        )?;
+        Ok(())
+    }
+    pub fn reset(&self, commit_id: &str) -> io::Result<()> {
+        run_cmd_stdout(
+            Command::new("git")
+                .current_dir(self.path)
+                .arg("reset")
+                .arg(commit_id),
+            None,
+        )?;
+        Ok(())
+    }
+    pub fn commit(&self, message: &str) -> io::Result<()> {
+        run_cmd_stdout(
+            Command::new("git")
+                .current_dir(self.path)
+                .arg("commit")
+                .arg("-m")
+                .arg(message),
+            None,
+        )?;
+        Ok(())
+    }
+    pub fn is_ancestor(&self, possible_ancestor: &str, commit: &str) -> io::Result<bool> {
+        let stdout = to_utf8(run_cmd_stdout(Command::new("git")
+            .current_dir(self.path)
+            .arg("merge-base")
+            .arg("is-ancestor")
+            .arg(possible_ancestor)
+            .arg(commit), None)?)?;
+        Ok(stdout.trim() == "0")
+    }
+    pub fn merge_log(&self) -> io::Result<Vec<Vec<String>>> {
+        let stdout = to_utf8(run_cmd_stdout(Command::new("git")
+            .current_dir(self.path)
+            .arg("log")
+            .arg("--merges")
+            .arg("--pretty=%P"), None)?)?;
+        let mut result = vec![];
+        for line in stdout.lines() {
+            let parents: Vec<String> = line.split(' ').map(|s| s.to_string()).collect();
+            if !parents.is_empty() {
+                result.push(parents);
+            }
+        }
+        Ok(result)
     }
 }
 impl Drop for WorkTree<'_> {
@@ -83,6 +155,7 @@ impl Drop for WorkTree<'_> {
         );
     }
 }
+
 
 #[cfg(test)]
 mod tests {
