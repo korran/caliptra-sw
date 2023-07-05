@@ -95,6 +95,9 @@ SECTIONS
 
     	. = ALIGN(4);
         _erodata = .;
+
+		. = ALIGN(64);
+		ROM_INFO = .;
 	} > ROM
 
 	.data : ALIGN(4)

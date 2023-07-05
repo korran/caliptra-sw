@@ -21,6 +21,8 @@ use caliptra_drivers::{
     report_fw_error_fatal, report_fw_error_non_fatal, CaliptraError, Ecc384, Hmac384, Mailbox,
     ResetReason, Sha256, Sha384, Sha384Acc, SocIfc,
 };
+use caliptra_error::CaliptraResult;
+use caliptra_image_types::RomInfo;
 use rom_env::RomEnv;
 
 #[cfg(not(feature = "std"))]
@@ -48,12 +50,21 @@ const BANNER: &str = r#"
 Running Caliptra ROM ...
 "#;
 
-fn check_rom_contents(env: &mut RomEnv) {
+extern "C" {
+    static ROM_INFO: RomInfo;
+}
+
+fn check_rom_contents(env: &mut RomEnv, expected_digest: &[u32; 8]) -> CaliptraResult<()> {
     let rom: &[[u32; 16]; 511] = unsafe { &*(4 as *const [[u32; 16]; 511]) };
 
     cprintln!("Digesting ROM");
     let digest = env.sha256.digest_raw(rom).unwrap();
     cprintln!("ROM Digest: {}", HexBytes(&<[u8; 32]>::from(digest)));
+    if digest.0 != *expected_digest {
+        cprintln!("ROM integrity test failed");
+        return Err(CaliptraError::ROM_INTEGRITY_FAILURE);
+    }
+    Ok(())
 }
 
 #[no_mangle]
@@ -64,7 +75,7 @@ pub extern "C" fn rom_entry() -> ! {
         Ok(env) => env,
         Err(e) => report_error(e.into()),
     };
-    check_rom_contents(&mut env);
+    let rom_info = unsafe { &ROM_INFO };
 
     let _lifecyle = match env.soc_ifc.lifecycle() {
         caliptra_drivers::Lifecycle::Unprovisioned => "Unprovisioned",
@@ -88,6 +99,9 @@ pub extern "C" fn rom_entry() -> ! {
 
     let result = kat::execute_kat(&mut env);
     if let Err(err) = result {
+        report_error(err.into());
+    }
+    if let Err(err) = check_rom_contents(&mut env, &rom_info.sha256_digest) {
         report_error(err.into());
     }
 
