@@ -96,7 +96,10 @@ impl Sha256 {
             }
         }
 
-        let digest = Array4x8::read_from_reg(self.sha256.regs().digest());
+        let sha256 = self.sha256.regs();
+        wait::until(|| sha256.status().read().valid());
+
+        let digest = Array4x8::read_from_reg(sha256.digest());
 
         self.zeroize_internal();
 
@@ -121,6 +124,20 @@ impl Sha256 {
     pub unsafe fn zeroize() {
         let mut sha256 = Sha256Reg::new();
         sha256.regs_mut().ctrl().write(|w| w.zeroize(true));
+    }
+
+    pub fn digest_raw(&mut self, blocks: &[[u32; 16]]) -> CaliptraResult<Array4x8> {
+        let mut iter = blocks.iter();
+        if let Some(first_block) = iter.next() {
+            self.sha256.regs_mut().block().write(first_block);
+            self.digest_op(true)?;
+        }
+        for block in iter {
+            self.sha256.regs_mut().block().write(block);
+            self.digest_op(false)?;
+        }
+        wait::until(|| self.sha256.regs().status().read().valid());
+        Ok(Array4x8::read_from_reg(self.sha256.regs_mut().digest()))
     }
 
     /// Copy digest to buffer
@@ -215,9 +232,6 @@ impl Sha256 {
             sha256.ctrl().write(|w| w.mode(true).init(false).next(true));
         }
 
-        // Wait for the digest operation to finish
-        wait::until(|| sha256.status().read().valid());
-
         Ok(())
     }
 }
@@ -308,6 +322,9 @@ impl<'a> Sha256DigestOp<'a> {
         let buf = &self.buf[..self.buf_idx];
         self.sha
             .digest_partial_block(buf, self.is_first(), self.data_size)?;
+
+        // Wait for the digest operation to finish
+        wait::until(|| self.sha.sha256.regs().status().read().valid());
 
         // Set the state of the operation to final
         self.state = Sha256DigestState::Final;
