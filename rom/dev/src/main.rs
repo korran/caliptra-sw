@@ -14,7 +14,7 @@ Abstract:
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), no_main)]
 
-use crate::lock::lock_registers;
+use crate::{lock::lock_registers, print::HexBytes};
 use core::hint::black_box;
 
 use caliptra_drivers::{
@@ -48,6 +48,14 @@ const BANNER: &str = r#"
 Running Caliptra ROM ...
 "#;
 
+fn check_rom_contents(env: &mut RomEnv) {
+    let rom: &[[u32; 16]; 511] = unsafe { &*(4 as *const [[u32; 16]; 511]) };
+
+    cprintln!("Digesting ROM");
+    let digest = env.sha256.digest_raw(rom).unwrap();
+    cprintln!("ROM Digest: {}", HexBytes(&<[u8; 32]>::from(digest)));
+}
+
 #[no_mangle]
 pub extern "C" fn rom_entry() -> ! {
     cprintln!("{}", BANNER);
@@ -56,6 +64,7 @@ pub extern "C" fn rom_entry() -> ! {
         Ok(env) => env,
         Err(e) => report_error(e.into()),
     };
+    check_rom_contents(&mut env);
 
     let _lifecyle = match env.soc_ifc.lifecycle() {
         caliptra_drivers::Lifecycle::Unprovisioned => "Unprovisioned",
