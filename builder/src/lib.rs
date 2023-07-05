@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, ErrorKind};
+use std::mem::size_of;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -13,10 +14,12 @@ use caliptra_image_gen::{
     ImageGenerator, ImageGeneratorConfig, ImageGeneratorOwnerConfig, ImageGeneratorVendorConfig,
 };
 use caliptra_image_openssl::OsslCrypto;
-use caliptra_image_types::{ImageBundle, ImageRevision};
+use caliptra_image_types::{ImageBundle, ImageRevision, RomInfo};
 use elf::endian::LittleEndian;
+use zerocopy::AsBytes;
 
 mod elf_symbols;
+mod sha256;
 
 pub use elf_symbols::{elf_symbols, Symbol, SymbolBind, SymbolType, SymbolVisibility};
 use once_cell::sync::Lazy;
@@ -198,6 +201,8 @@ pub fn elf2rom(elf_bytes: &[u8]) -> io::Result<Vec<u8>> {
     let mut result = vec![0u8; 0x8000];
     let elf = elf::ElfBytes::<LittleEndian>::minimal_parse(elf_bytes).map_err(other_err)?;
 
+
+
     let Some(segments) = elf.segments() else {
         return Err(other_err("ELF file has no segments"))
     };
@@ -221,6 +226,20 @@ pub fn elf2rom(elf_bytes: &[u8]) -> io::Result<Vec<u8>> {
         };
         dest_bytes.copy_from_slice(src_bytes);
     }
+
+    let symbols = elf_symbols(elf_bytes)?;
+    let rom_info_sym = symbols.iter().find(|s| s.name == "ROM_INFO").ok_or_else(|| other_err("ROM_INFO symbol not defined".to_string()))?;
+
+    let rom_info_start = rom_info_sym.value as usize;
+
+    let rom_info = RomInfo {
+        sha256_digest: sha256::sha256_word_reversed(&result[0..rom_info_start]),
+        revision: image_revision_from_git_repo()?,
+        flags: 0,
+    };
+    let rom_info_dest = result.get_mut(rom_info_start..rom_info_start + size_of::<RomInfo>()).ok_or_else(|| other_err("No space in ROM for ROM_INFO"))?;
+    rom_info_dest.copy_from_slice(rom_info.as_bytes());
+
     Ok(result)
 }
 

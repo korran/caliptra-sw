@@ -12,11 +12,11 @@ pub unsafe fn read_volatile_array<const LEN: usize, T: Uint>(dst: *mut T, src: *
 }
 
 #[inline(always)]
-pub unsafe fn write_volatile_array<const LEN: usize, T: Uint>(dst: *mut T, src: &[T; LEN]) {
+pub unsafe fn write_volatile_array<const LEN: usize, T: Uint>(dst: *mut T, src: *const [T; LEN]) {
     match (T::TYPE, LEN) {
-        (UintType::U32, 12) => copy_12words(dst as *mut u32, src.as_ptr() as *const u32),
-        (UintType::U32, 16) => copy_16words(dst as *mut u32, src.as_ptr() as *const u32),
-        _ => super::write_volatile_slice(&RealMmioMut::default(), dst, src),
+        (UintType::U32, 12) => copy_12words(dst as *mut u32, src as *const u32),
+        (UintType::U32, 16) => copy_16words(dst as *mut u32, src as *const u32),
+        _ => super::write_volatile_slice(&RealMmioMut::default(), dst, &*src),
     }
 }
 

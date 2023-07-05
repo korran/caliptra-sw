@@ -55,11 +55,18 @@ extern "C" {
 }
 
 fn check_rom_contents(env: &mut RomEnv, expected_digest: &[u32; 8]) -> CaliptraResult<()> {
-    let rom: &[[u32; 16]; 511] = unsafe { &*(4 as *const [[u32; 16]; 511]) };
+    let start = 0 as *const [u32; 16];
+    let n_blocks = unsafe { &ROM_INFO as *const RomInfo as usize / 64 };
 
-    cprintln!("Digesting ROM");
-    let digest = env.sha256.digest_raw(rom).unwrap();
-    cprintln!("ROM Digest: {}", HexBytes(&<[u8; 32]>::from(digest)));
+    let block = 64 as *const [u32; 16];
+    let digest = unsafe { env.sha256.digest_blocks_raw(block, 2)? };
+    cprintln!("diges {}", HexBytes(&<[u8; 32]>::from(digest)));
+
+    cprintln!("Digesting ROM {} blocks", n_blocks);
+    let digest = unsafe { env.sha256.digest_blocks_raw(start, n_blocks)? };
+    cprintln!("ROM Digest: {:x}", digest.0[0]);
+    cprintln!("Exp Digest: {:x}", expected_digest[0]);
+    //cprintln!("Exp Digest: {}", HexBytes(&<[u8; 32]>::from(digest)));
     if digest.0 != *expected_digest {
         cprintln!("ROM integrity test failed");
         return Err(CaliptraError::ROM_INTEGRITY_FAILURE);

@@ -127,15 +127,11 @@ impl Sha256 {
     }
 
     #[inline(always)]
-    pub fn digest_raw(&mut self, blocks: &[[u32; 16]]) -> CaliptraResult<Array4x8> {
-        let mut iter = blocks.iter();
-        if let Some(first_block) = iter.next() {
-            self.sha256.regs_mut().block().write(first_block);
-            self.digest_op(true)?;
-        }
-        for block in iter {
-            self.sha256.regs_mut().block().write(block);
-            self.digest_op(false)?;
+    pub unsafe fn digest_blocks_raw(&mut self, mut ptr: *const [u32; 16], n_blocks: usize) -> CaliptraResult<Array4x8> {
+        for i in 0..n_blocks {
+            self.sha256.regs_mut().block().write_ptr(ptr);
+            self.digest_op(i == 0)?;
+            ptr = ptr.add(1);
         }
         wait::until(|| self.sha256.regs().status().read().valid());
         Ok(Array4x8::read_from_reg(self.sha256.regs_mut().digest()))

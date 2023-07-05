@@ -408,10 +408,6 @@ pub struct RomInfo {
     pub revision: ImageRevision,
     pub flags: u32,
 }
-impl RomInfo {
-    // The working copy was dirty when the image was built
-    pub const FLAG_DIRTY: u32 = (1 << 0);
-}
 
 #[cfg(all(test, target_family = "unix"))]
 mod tests {

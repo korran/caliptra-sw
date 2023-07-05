@@ -146,6 +146,8 @@ dependencies = [
  "elf",
  "hex",
  "once_cell",
+ "openssl",
+ "zerocopy",
 ]
 
 [[package]]
