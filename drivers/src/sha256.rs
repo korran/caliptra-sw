@@ -126,6 +126,7 @@ impl Sha256 {
         sha256.regs_mut().ctrl().write(|w| w.zeroize(true));
     }
 
+    #[inline(always)]
     pub fn digest_raw(&mut self, blocks: &[[u32; 16]]) -> CaliptraResult<Array4x8> {
         let mut iter = blocks.iter();
         if let Some(first_block) = iter.next() {
