@@ -1,6 +1,7 @@
 // Licensed under the Apache-2.0 license.
 pub mod common;
 
+use caliptra_builder::firmware;
 use caliptra_common::mailbox_api::{
     CommandId, EcdsaVerifyReq, MailboxReqHeader, MailboxRespHeader,
 };
@@ -15,7 +16,7 @@ use zerocopy::{AsBytes, FromBytes};
 
 #[test]
 fn ecdsa_cmd_run_wycheproof() {
-    let mut model = run_rom_test("mbox");
+    let mut model = run_rom_test(&firmware::runtime_tests::MBOX);
 
     model.step_until(|m| {
         m.soc_mbox().status().read().mbox_fsm_ps().mbox_idle()

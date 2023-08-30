@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::iter;
 
-use caliptra_builder::FwId;
+use caliptra_builder::{firmware, FwId};
 use caliptra_drivers::{Array4x12, Array4xN, Ecc384PubKey};
 use caliptra_drivers_test_bin::DoeTestResults;
 use caliptra_hw_model::{
@@ -19,18 +19,8 @@ use caliptra_test::{
 use openssl::{hash::MessageDigest, pkey::PKey};
 use zerocopy::{AsBytes, FromBytes};
 
-fn build_test_rom(test_bin_name: &'static str) -> Vec<u8> {
-    caliptra_builder::build_firmware_rom(&FwId {
-        crate_name: "caliptra-drivers-test-bin",
-        bin_name: test_bin_name,
-        features: &["emu"],
-        ..Default::default()
-    })
-    .unwrap()
-}
-
-fn start_driver_test(test_bin_name: &'static str) -> Result<DefaultHwModel, Box<dyn Error>> {
-    let rom = build_test_rom(test_bin_name);
+fn start_driver_test(test_rom: &'static FwId) -> Result<DefaultHwModel, Box<dyn Error>> {
+    let rom = caliptra_builder::build_firmware_rom(test_rom)?;
     caliptra_hw_model::new(BootParams {
         init_params: InitParams {
             rom: &rom,
@@ -40,8 +30,8 @@ fn start_driver_test(test_bin_name: &'static str) -> Result<DefaultHwModel, Box<
     })
 }
 
-fn run_driver_test(test_bin_name: &'static str) {
-    let mut model = start_driver_test(test_bin_name).unwrap();
+fn run_driver_test(test_rom: &'static FwId) {
+    let mut model = start_driver_test(test_rom).unwrap();
     // Wrap in a line-writer so output from different test threads doesn't multiplex within a line.
     model.step_until_exit_success().unwrap();
 }
@@ -204,7 +194,7 @@ fn test_generate_doe_vectors_when_debug_not_locked() {
 
 #[test]
 fn test_doe_when_debug_not_locked() {
-    let rom = build_test_rom("doe");
+    let rom = caliptra_builder::build_firmware_rom(&firmware::driver_tests::DOE).unwrap();
     let mut model = caliptra_hw_model::new(BootParams {
         init_params: InitParams {
             rom: &rom,
@@ -299,7 +289,7 @@ fn test_generate_doe_vectors_when_debug_locked() {
 
 #[test]
 fn test_doe_when_debug_locked() {
-    let rom = build_test_rom("doe");
+    let rom = caliptra_builder::build_firmware_rom(&firmware::driver_tests::DOE).unwrap();
     let mut model = caliptra_hw_model::new(BootParams {
         init_params: InitParams {
             rom: &rom,
@@ -319,27 +309,27 @@ fn test_doe_when_debug_locked() {
 
 #[test]
 fn test_ecc384() {
-    run_driver_test("ecc384");
+    run_driver_test(&firmware::driver_tests::ECC384);
 }
 
 #[test]
 fn test_error_reporter() {
-    run_driver_test("error_reporter");
+    run_driver_test(&firmware::driver_tests::ERROR_REPORTER);
 }
 
 #[test]
 fn test_hmac384() {
-    run_driver_test("hmac384");
+    run_driver_test(&firmware::driver_tests::HMAC384);
 }
 
 #[test]
 fn test_keyvault() {
-    run_driver_test("keyvault");
+    run_driver_test(&firmware::driver_tests::KEYVAULT);
 }
 
 #[test]
 fn test_mailbox_soc_to_uc() {
-    let mut model = start_driver_test("mailbox_driver_responder").unwrap();
+    let mut model = start_driver_test(&firmware::driver_tests::MAILBOX_DRIVER_RESPONDER).unwrap();
 
     // Test MailboxRecvTxn::recv_request()
     {
@@ -599,7 +589,7 @@ fn test_mailbox_soc_to_uc() {
 
 #[test]
 fn test_mailbox_uc_to_soc() {
-    let mut model = start_driver_test("mailbox_driver_sender").unwrap();
+    let mut model = start_driver_test(&firmware::driver_tests::MAILBOX_DRIVER_SENDER).unwrap();
 
     // 0 byte request
     let txn = model.wait_for_mailbox_receive().unwrap();
@@ -641,7 +631,8 @@ fn test_mailbox_uc_to_soc() {
 
 #[test]
 fn test_uc_to_soc_error_state() {
-    let mut model = start_driver_test("mailbox_driver_negative_tests").unwrap();
+    let mut model =
+        start_driver_test(&firmware::driver_tests::MAILBOX_DRIVER_NEGATIVE_TESTS).unwrap();
     let txn = model.wait_for_mailbox_receive().unwrap();
 
     let cmd = txn.req.cmd;
@@ -679,47 +670,47 @@ fn test_uc_to_soc_error_state() {
 
 #[test]
 fn test_pcrbank() {
-    run_driver_test("pcrbank");
+    run_driver_test(&firmware::driver_tests::PCRBANK);
 }
 
 #[test]
 fn test_sha1() {
-    run_driver_test("sha1");
+    run_driver_test(&firmware::driver_tests::SHA1);
 }
 
 #[test]
 fn test_sha256() {
-    run_driver_test("sha256");
+    run_driver_test(&firmware::driver_tests::SHA256);
 }
 
 #[test]
 fn test_sha384() {
-    run_driver_test("sha384");
+    run_driver_test(&firmware::driver_tests::SHA384);
 }
 
 #[test]
 fn test_sha384acc() {
-    run_driver_test("sha384acc");
+    run_driver_test(&firmware::driver_tests::SHA384ACC);
 }
 
 #[test]
 fn test_status_reporter() {
-    run_driver_test("status_reporter");
+    run_driver_test(&firmware::driver_tests::STATUS_REPORTER);
 }
 
 #[test]
 fn test_lms_24() {
-    run_driver_test("test_lms_24");
+    run_driver_test(&firmware::driver_tests::TEST_LMS_24);
 }
 
 #[test]
 fn test_lms_32() {
-    run_driver_test("test_lms_32");
+    run_driver_test(&firmware::driver_tests::TEST_LMS_32);
 }
 
 #[test]
 fn test_negative_lms() {
-    run_driver_test("test_negative_lms");
+    run_driver_test(&firmware::driver_tests::TEST_NEGATIVE_LMS);
 }
 
 // Return a series of nibbles that won't fail health tests.
@@ -737,8 +728,8 @@ fn trng_nibbles() -> impl Iterator<Item = u8> + Clone {
 }
 
 // Helper function to run CSRNG test binaries with specific entropy nibbles.
-fn test_csrng_with_nibbles(test_binary: &'static str, itrng_nibbles: Box<dyn Iterator<Item = u8>>) {
-    let rom = build_test_rom(test_binary);
+fn test_csrng_with_nibbles(fwid: &FwId<'static>, itrng_nibbles: Box<dyn Iterator<Item = u8>>) {
+    let rom = caliptra_builder::build_firmware_rom(fwid).unwrap();
 
     let mut model = caliptra_hw_model::new(BootParams {
         init_params: InitParams {
@@ -755,20 +746,20 @@ fn test_csrng_with_nibbles(test_binary: &'static str, itrng_nibbles: Box<dyn Ite
 
 #[test]
 fn test_csrng() {
-    test_csrng_with_nibbles("csrng", Box::new(trng_nibbles()));
+    test_csrng_with_nibbles(&firmware::driver_tests::CSRNG, Box::new(trng_nibbles()));
 }
 
 #[test]
 fn test_csrng2() {
-    test_csrng_with_nibbles("csrng2", Box::new(trng_nibbles()));
+    test_csrng_with_nibbles(&firmware::driver_tests::CSRNG2, Box::new(trng_nibbles()));
 }
 
 #[test]
 fn test_csrng_repetition_count() {
     // Tests for Repetition Count Test (RCT).
-    fn test_repcnt_finite_repeats(test_binary: &'static str, repeat: usize) {
+    fn test_repcnt_finite_repeats(test_fwid: &FwId<'static>, repeat: usize) {
         test_csrng_with_nibbles(
-            test_binary,
+            test_fwid,
             Box::new({
                 // The boot-time health testing requires two consecutive windows of 2048-bits to
                 // pass or fail health tests. So let's set up our windows to begin with the
@@ -787,8 +778,8 @@ fn test_csrng_repetition_count() {
     }
     // The following tests assumes the CSRNG driver configures the RCT threshold to 41.
     const THRESHOLD: usize = 41;
-    const PASS: &str = "csrng_pass_health_tests";
-    const FAIL: &str = "csrng_fail_repcnt_tests";
+    const PASS: &FwId = &firmware::driver_tests::CSRNG_PASS_HEALTH_TESTS;
+    const FAIL: &FwId = &firmware::driver_tests::CSRNG_FAIL_REPCNT_TESTS;
 
     // Bits that repeat up to (but excluding) the threshold times should PASS the RCT.
     test_repcnt_finite_repeats(PASS, THRESHOLD - 1);
@@ -817,7 +808,7 @@ fn test_csrng_adaptive_proportion() {
 
     // The adaptive proportion test will pass if the number of 1's in a 2048 bit window is in the
     // range [512, 1536]. Note, inclusive bounds
-    const PASS: &str = "csrng_pass_health_tests";
+    const PASS: &FwId = &firmware::driver_tests::CSRNG_PASS_HEALTH_TESTS;
 
     // 512 ones; 1536 zeroes
     test_csrng_with_nibbles(
@@ -945,7 +936,7 @@ fn test_csrng_adaptive_proportion() {
 
     // Otherwise, the test will fail if the number of 1's falls below the LO threshold or exceeds
     // the HI threshold.
-    const FAIL: &str = "csrng_fail_adaptp_tests";
+    const FAIL: &FwId = &firmware::driver_tests::CSRNG_FAIL_ADAPTP_TESTS;
 
     // 511 ones; 1537 zeroes; should fail LO threshold.
     test_csrng_with_nibbles(
@@ -1076,7 +1067,8 @@ fn test_csrng_adaptive_proportion() {
 #[cfg_attr(all(feature = "verilator", not(feature = "itrng")), ignore)]
 fn test_trng_in_itrng_mode() {
     // To run this test under verilator, use --features=verilator,itrng
-    let rom = build_test_rom("trng_driver_responder");
+    let rom = caliptra_builder::build_firmware_rom(&firmware::driver_tests::TRNG_DRIVER_RESPONDER)
+        .unwrap();
 
     let mut model = caliptra_hw_model::new(BootParams {
         init_params: InitParams {
@@ -1124,7 +1116,8 @@ fn test_trng_in_etrng_mode() {
         0x5d9c55c8, 0x0303cff9, 0xb9255124, 0x91f478c5, 0xdd186bc8,
     ];
 
-    let rom = build_test_rom("trng_driver_responder");
+    let rom = caliptra_builder::build_firmware_rom(&firmware::driver_tests::TRNG_DRIVER_RESPONDER)
+        .unwrap();
 
     let mut model = caliptra_hw_model::new(BootParams {
         init_params: InitParams {
