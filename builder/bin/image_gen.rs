@@ -11,7 +11,7 @@ fn main() {
         .about("Caliptra firmware image builder")
         .arg(arg!(--"rom" [FILE] "ROM binary image").value_parser(value_parser!(PathBuf)))
         .arg(arg!(--"fw" [FILE] "FW bundle image").value_parser(value_parser!(PathBuf)))
-        .arg(arg!(--"all" [DIR] "Build all firmware images").value_parser(value_parser!(PathBuf)))
+        .arg(arg!(--"all_elfs" [DIR] "Build all firmware elf files").value_parser(value_parser!(PathBuf)))
         .get_matches();
 
 
@@ -32,11 +32,8 @@ fn main() {
         std::fs::write(fw_path, &image.to_bytes().unwrap()).unwrap();
     }
 
-    if let Some(all_dir) = args.get_one::<PathBuf>("all") {
-        for fwid in firmware::REGISTERED_FW {
-
-        }
-
+    if let Some(all_dir) = args.get_one::<PathBuf>("all_elfs") {
+        caliptra_builder::build_firmware_elfs_uncached(None, firmware::REGISTERED_FW).unwrap();
     }
 
 

@@ -144,6 +144,7 @@ pub fn build_firmware_elfs_uncached<'a>(workspace_dir: Option<&Path>, fwids: &'a
             cmd.arg("--bin")
                .arg(fwid.bin_name);
         }
+        println!("Running command {:?}", cmd.get_args());
         run_cmd(&mut cmd)?;
 
         for &fwid in invocation.fwids.iter() {
