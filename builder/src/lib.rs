@@ -98,8 +98,9 @@ pub fn build_firmware_elf_uncached(workspace_dir: Option<&Path>, id: &FwId) -> i
 
 /// Calls out to Cargo to build a firmware elf file, combining targets to
 /// extract as much parallelism as possible. `workspace_dir` is the workspace
-/// dir to build from; defaults to this workspace. `id` is the id of the
-/// firmware to build. The result is the raw elf bytes.
+/// dir to build from; defaults to this workspace. `fwids` are the ids of the
+/// firmware to build. The results will be returned in the same order as fwids,
+/// with any duplicates filtered out.
 pub fn build_firmware_elfs_uncached<'a>(workspace_dir: Option<&Path>, fwids: &'a [&'a FwId<'a>]) -> io::Result<Vec<(&'a FwId<'a>, Vec<u8>)>> {
     const TARGET: &str = "riscv32imc-unknown-none-elf";
     const PROFILE: &str = "firmware";
@@ -158,7 +159,7 @@ pub fn build_firmware_elfs_uncached<'a>(workspace_dir: Option<&Path>, fwids: &'a
         }
 
     }
-    todo!();
+    Ok(fwids.iter().filter_map(|&fwid| result_map.remove(fwid).map(|elf| (fwid, elf))).collect())
 }
 
 /// Compute the minimum number of cargo invocations to build all the specified
