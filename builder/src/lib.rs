@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::{self, ErrorKind};
-use std::mem::size_of;
+use std::mem::{size_of, self};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -71,13 +71,13 @@ fn run_cmd_stdout(cmd: &mut Command, input: Option<&[u8]>) -> io::Result<String>
 }
 
 // Represent the Cargo identity of a firmware binary.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct FwId<'a> {
     // The crate name (For example, "caliptra-rom")
     pub crate_name: &'a str,
 
-    // If the crate contains multiple binaries, the name of the binary. Leave
-    // empty to build the crate's default binary.
+    // The name of the binary inside the crate. Set to the same as crate_name
+    // for a binary crate.
     pub bin_name: &'a str,
 
     // The features to use the build the binary
@@ -88,26 +88,42 @@ pub struct FwId<'a> {
 /// workspace dir to build from; defaults to this workspace. `id` is the id of
 /// the firmware to build. The result is the raw elf bytes.
 pub fn build_firmware_elf_uncached(workspace_dir: Option<&Path>, id: &FwId) -> io::Result<Vec<u8>> {
+    let fwids = [id];
+    let result = build_firmware_elfs_uncached(workspace_dir, &fwids)?;
+    if result.len() != 1 {
+        panic!("Bug: build_firmware_elfs_uncached built more firmware than expected");
+    }
+    Ok(result.into_iter().next().unwrap().1)
+}
+
+/// Calls out to Cargo to build a firmware elf file, combining targets to
+/// extract as much parallelism as possible. `workspace_dir` is the workspace
+/// dir to build from; defaults to this workspace. `id` is the id of the
+/// firmware to build. The result is the raw elf bytes.
+pub fn build_firmware_elfs_uncached<'a>(workspace_dir: Option<&Path>, fwids: &'a [&'a FwId<'a>]) -> io::Result<Vec<(&'a FwId<'a>, Vec<u8>)>> {
     const TARGET: &str = "riscv32imc-unknown-none-elf";
     const PROFILE: &str = "firmware";
 
-    let mut features_csv = id.features.join(",");
-    if !id.features.contains(&"riscv") {
-        if !features_csv.is_empty() {
-            features_csv.push(',');
-        }
-        features_csv.push_str("riscv");
-    }
+    let cargo_invocations = cargo_invocations_from_fwids(fwids);
+    let mut result_map = HashMap::new();
 
-    let workspace_dir = workspace_dir.unwrap_or_else(|| Path::new(THIS_WORKSPACE_DIR));
-    let mut cmd = Command::new(env!("CARGO"));
-    cmd.current_dir(workspace_dir);
-    if option_env!("GITHUB_ACTIONS").is_some() {
-        // In continuous integration, warnings are always errors.
-        cmd.arg("--config")
-            .arg("target.'cfg(all())'.rustflags = [\"-Dwarnings\"]");
-    }
-    run_cmd(
+    for invocation in cargo_invocations {
+        let mut features_csv = invocation.features.join(",");
+        if !invocation.features.contains(&"riscv") {
+            if !features_csv.is_empty() {
+                features_csv.push(',');
+            }
+            features_csv.push_str("riscv");
+        }
+
+        let workspace_dir = workspace_dir.unwrap_or_else(|| Path::new(THIS_WORKSPACE_DIR));
+        let mut cmd = Command::new(env!("CARGO"));
+        cmd.current_dir(workspace_dir);
+        if option_env!("GITHUB_ACTIONS").is_some() {
+            // In continuous integration, warnings are always errors.
+            cmd.arg("--config")
+                .arg("target.'cfg(all())'.rustflags = [\"-Dwarnings\"]");
+        }
         cmd.arg("build")
             .arg("--quiet")
             .arg("--locked")
@@ -117,19 +133,84 @@ pub fn build_firmware_elf_uncached(workspace_dir: Option<&Path>, id: &FwId) -> i
             .arg(features_csv)
             .arg("--no-default-features")
             .arg("--profile")
-            .arg(PROFILE)
-            .arg("-p")
-            .arg(id.crate_name)
-            .arg("--bin")
-            .arg(id.bin_name),
-    )?;
-    fs::read(
-        Path::new(workspace_dir)
-            .join("target")
-            .join(TARGET)
-            .join(PROFILE)
-            .join(id.bin_name),
-    )
+            .arg(PROFILE);
+        
+        for crate_name in invocation.crate_names {
+            cmd.arg("-p")
+                .arg(crate_name);
+        }
+        for &fwid in invocation.fwids.iter() {
+            cmd.arg("--bin")
+               .arg(fwid.bin_name);
+        }
+        run_cmd(&mut cmd)?;
+
+        for &fwid in invocation.fwids.iter() {
+            result_map.insert(
+                fwid, 
+                fs::read(
+                    Path::new(workspace_dir)
+                        .join("target")
+                        .join(TARGET)
+                        .join(PROFILE)
+                        .join(fwid.bin_name),
+                )?);
+        }
+
+    }
+    todo!();
+}
+
+/// Compute the minimum number of cargo invocations to build all the specified
+/// fwids.
+fn cargo_invocations_from_fwids<'a>(fwids: &'a [&'a FwId<'a>]) -> Vec<CargoInvocation<'a>> {
+    let mut result = vec![];
+    let mut remaining_fwids = fwids.to_vec();
+    while !remaining_fwids.is_empty() {
+        let mut invocations_by_features: HashMap<&[&str], CargoInvocation> = HashMap::new();
+
+        remaining_fwids.retain(|&fwid| {
+            let invocation = invocations_by_features.entry(fwid.features).or_insert_with(|| CargoInvocation::new(fwid.features));
+            if invocation.fwids.iter().any(|&x| x.bin_name == fwid.bin_name) {
+                // The binary filenames will collide in the target directory;
+                // keep fwid in remaining_fwids and build this one in a separate
+                // cargo invocation.
+                return true;
+            }
+            if !invocation.crate_names.contains(&fwid.crate_name) {
+                invocation.crate_names.push(fwid.crate_name);
+            }
+            invocation.fwids.push(fwid);
+
+            // remove fwid from remaining_fwids
+            false
+        });
+        result.extend(invocations_by_features.into_values());
+    }
+    // Make the result order consistent for unit tests, and run the largest invocations first.
+    result.sort_unstable_by(|a, b| {
+        b.fwids.len().cmp(&a.fwids.len())
+        .then(a.features.cmp(b.features))
+        .then(a.crate_names.cmp(&b.crate_names))
+        .then(a.fwids.cmp(&b.fwids))
+    });
+
+    result
+}
+
+struct CargoInvocation<'a> {
+    features: &'a [&'a str],
+    crate_names: Vec<&'a str>,
+    fwids: Vec<&'a FwId<'a>>,
+}
+impl<'a> CargoInvocation<'a> {
+    fn new(features: &'a [&'a str]) -> Self {
+        Self {
+            features,
+            crate_names: Vec::new(),
+            fwids: Vec::new(),
+        }
+    }
 }
 
 pub fn build_firmware_elf(id: &FwId<'static>) -> io::Result<Arc<Vec<u8>>> {
