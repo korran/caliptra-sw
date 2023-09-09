@@ -21,6 +21,9 @@ once_cell.workspace = true
 openssl.workspace = true
 zerocopy.workspace = true
 
+[features]
+slow_tests = []
+
 [[bin]]
 name = "image"
 path = "bin/image_gen.rs"
