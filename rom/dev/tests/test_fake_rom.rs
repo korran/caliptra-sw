@@ -1,7 +1,9 @@
 // Licensed under the Apache-2.0 license
 
-use caliptra_builder::ROM_FAKE_WITH_UART;
-use caliptra_builder::{FwId, ImageOptions, APP_WITH_UART};
+use caliptra_builder::{
+    firmware::{rom_tests::FAKE_TEST_FMC_WITH_UART, APP_WITH_UART, ROM_FAKE_WITH_UART},
+    ImageOptions,
+};
 use caliptra_common::RomBootStatus::*;
 use caliptra_drivers::CaliptraError;
 use caliptra_hw_model::{BootParams, DeviceLifecycle, Fuses, HwModel, InitParams, SecurityState};
@@ -9,13 +11,6 @@ use caliptra_hw_model::{BootParams, DeviceLifecycle, Fuses, HwModel, InitParams,
 pub mod helpers;
 
 const TEST_FMC_CMD_RESET_FOR_UPDATE: u32 = 0x1000_0004;
-
-const FAKE_TEST_FMC_WITH_UART: FwId = FwId {
-    crate_name: "caliptra-rom-test-fmc",
-    bin_name: "caliptra-rom-test-fmc",
-    features: &["emu", "fake-fmc"],
-    workspace_dir: None,
-};
 
 #[test]
 fn test_skip_kats() {

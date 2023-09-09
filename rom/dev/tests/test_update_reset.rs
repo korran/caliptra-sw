@@ -1,6 +1,9 @@
 // Licensed under the Apache-2.0 license
 
-use caliptra_builder::{FwId, ImageOptions, APP_WITH_UART, ROM_WITH_UART};
+use caliptra_builder::{
+    firmware::{rom_tests::TEST_FMC_WITH_UART, APP_WITH_UART, ROM_WITH_UART},
+    ImageOptions,
+};
 use caliptra_common::mailbox_api::CommandId;
 use caliptra_common::RomBootStatus::*;
 use caliptra_error::CaliptraError;
@@ -11,13 +14,6 @@ const TEST_FMC_CMD_RESET_FOR_UPDATE: u32 = 0x1000_0004;
 
 #[test]
 fn test_update_reset_success() {
-    pub const TEST_FMC_WITH_UART: FwId = FwId {
-        crate_name: "caliptra-rom-test-fmc",
-        bin_name: "caliptra-rom-test-fmc",
-        features: &["emu"],
-        workspace_dir: None,
-    };
-
     let fuses = Fuses::default();
     let rom = caliptra_builder::build_firmware_rom(&ROM_WITH_UART).unwrap();
     let mut hw = caliptra_hw_model::new(BootParams {
@@ -61,13 +57,6 @@ fn test_update_reset_success() {
 
 #[test]
 fn test_update_reset_no_mailbox_cmd() {
-    pub const TEST_FMC_WITH_UART: FwId = FwId {
-        crate_name: "caliptra-rom-test-fmc",
-        bin_name: "caliptra-rom-test-fmc",
-        features: &["emu"],
-        workspace_dir: None,
-    };
-
     let fuses = Fuses::default();
     let rom = caliptra_builder::build_firmware_rom(&ROM_WITH_UART).unwrap();
     let mut hw = caliptra_hw_model::new(BootParams {
@@ -120,13 +109,6 @@ fn test_update_reset_no_mailbox_cmd() {
 
 #[test]
 fn test_update_reset_non_fw_load_cmd() {
-    pub const TEST_FMC_WITH_UART: FwId = FwId {
-        crate_name: "caliptra-rom-test-fmc",
-        bin_name: "caliptra-rom-test-fmc",
-        features: &["emu"],
-        workspace_dir: None,
-    };
-
     let fuses = Fuses::default();
     let rom = caliptra_builder::build_firmware_rom(&ROM_WITH_UART).unwrap();
     let mut hw = caliptra_hw_model::new(BootParams {
@@ -175,13 +157,6 @@ fn test_update_reset_non_fw_load_cmd() {
 
 #[test]
 fn test_update_reset_verify_image_failure() {
-    pub const TEST_FMC_WITH_UART: FwId = FwId {
-        crate_name: "caliptra-rom-test-fmc",
-        bin_name: "caliptra-rom-test-fmc",
-        features: &["emu"],
-        workspace_dir: None,
-    };
-
     let fuses = Fuses::default();
     let rom = caliptra_builder::build_firmware_rom(&ROM_WITH_UART).unwrap();
     let mut hw = caliptra_hw_model::new(BootParams {
@@ -232,13 +207,6 @@ fn test_update_reset_verify_image_failure() {
 
 #[test]
 fn test_update_reset_boot_status() {
-    pub const TEST_FMC_WITH_UART: FwId = FwId {
-        crate_name: "caliptra-rom-test-fmc",
-        bin_name: "caliptra-rom-test-fmc",
-        features: &["emu"],
-        workspace_dir: None,
-    };
-
     let fuses = Fuses::default();
     let rom = caliptra_builder::build_firmware_rom(&ROM_WITH_UART).unwrap();
     let mut hw = caliptra_hw_model::new(BootParams {
