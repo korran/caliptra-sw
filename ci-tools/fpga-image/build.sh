@@ -29,9 +29,11 @@ if [[ -z "${SKIP_DEBOOTSTRAP}" ]]; then
   chroot out/rootfs bash -c 'echo auto end0 > /etc/network/interfaces'
   chroot out/rootfs bash -c 'echo allow-hotplug end0 >> /etc/network/interfaces'
   chroot out/rootfs bash -c 'echo iface end0 inet6 auto >> /etc/network/interfaces'
-  chroot out/rootfs bash -c 'echo nameserver 2001:4860:4860::8888 > /etc/resolv.conf'
-  chroot out/rootfs bash -c 'echo nameserver 2001:4860:4860::8844 >> /etc/resolv.conf'
+  chroot out/rootfs bash -c 'echo nameserver 2001:4860:4860::6464 > /etc/resolv.conf'
+  chroot out/rootfs bash -c 'echo nameserver 2001:4860:4860::64 >> /etc/resolv.conf'
 
+  # Comment this line out if you don't trust folks with physical access to the
+  # uart
   chroot out/rootfs bash -c 'echo root:password | chpasswd'
 
   trap - EXIT
