@@ -1,0 +1,7 @@
+
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+rustflags = [
+  "-C", "link-arg=--sysroot=/home/kor/git/caliptra-sw/ci-tools/fpga-boss/image/mnt/p2",
+  "-L", "/home/kor/git/caliptra-sw/ci-tools/fpga-boss/image/mnt/p2/usr/lib/aarch64-linux-gnu",
+]

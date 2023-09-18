@@ -15,6 +15,7 @@ exclude = [
   "dpe/platform",
   "dpe/simulator",
   "dpe/tools",
+  "ci-tools/fpga-boss",
 ]
 
 members = [
