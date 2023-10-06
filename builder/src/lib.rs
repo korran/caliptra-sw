@@ -118,6 +118,23 @@ pub fn build_firmware_elf_uncached(workspace_dir: Option<&Path>, id: &FwId) -> i
     Ok(result.into_iter().next().unwrap().1)
 }
 
+fn fwid_map_to_vec<'a>(
+    fwids: &[&'a FwId<'a>],
+    mut map: HashMap<&'a FwId<'a>, Vec<u8>>,
+) -> io::Result<Vec<(&'a FwId<'a>, Vec<u8>)>> {
+    Ok(fwids
+        .iter()
+        .map(|&fwid| {
+            (
+                fwid,
+                map.remove(fwid).expect(
+                    "Bug: cargo_invocations_from_fwid did not complain about duplicate fwid",
+                ),
+            )
+        })
+        .collect())
+}
+
 /// Calls out to Cargo to build a firmware elf file, combining targets to
 /// extract as much parallelism as possible. `workspace_dir` is the workspace
 /// dir to build from; defaults to this workspace. `fwids` are the ids of the
@@ -143,17 +160,41 @@ pub fn build_firmware_elfs_uncached<'a>(
             result_map.insert(fwid, elf);
         })?;
     }
-    Ok(fwids
-        .iter()
-        .map(|&fwid| {
-            (
-                fwid,
-                result_map.remove(fwid).expect(
-                    "Bug: cargo_invocations_from_fwid did not complain about duplicate fwid",
-                ),
-            )
-        })
-        .collect())
+    fwid_map_to_vec(fwids, result_map)
+}
+
+/// Same as build_firmware_elfs_uncached(), but each cargo invocation is made
+/// concurrently with a unique target directory, allowing for faster incremental
+/// builds (but significantly increased memory and disk usage). Only call this
+/// from test tools that need a quick edit-compile-run cycle.
+pub fn build_firmware_elfs_fast<'a>(
+    fwids: &'a [&'a FwId<'a>],
+) -> io::Result<Vec<(&'a FwId<'a>, Vec<u8>)>> {
+    let workspace_dir = Path::new(THIS_WORKSPACE_DIR);
+    let cargo_invocations = cargo_invocations_from_fwids(fwids)?;
+    let result_map = Arc::new(Mutex::new(HashMap::new()));
+    std::thread::scope(|s| -> io::Result<()> {
+        let mut results = vec![];
+        for invocation in cargo_invocations {
+            let result_map = result_map.clone();
+            results.push(s.spawn(move || {
+                let target_dir = workspace_dir
+                    .join("target")
+                    .join(format!("builder-{}", invocation.features.join("-")));
+                cargo_invoke(workspace_dir, &target_dir, &invocation, |fwid, elf| {
+                    result_map.lock().unwrap().insert(fwid, elf);
+                })
+            }));
+        }
+        for result in results {
+            result.join().unwrap()?;
+        }
+        Ok(())
+    })?;
+    fwid_map_to_vec(
+        fwids,
+        Arc::into_inner(result_map).unwrap().into_inner().unwrap(),
+    )
 }
 
 fn cargo_invoke<'a>(
@@ -182,6 +223,7 @@ fn cargo_invoke<'a>(
     }
 
     let mut cmd = Command::new(env!("CARGO"));
+    cmd.env("CARGO_TARGET_DIR", target_dir);
     cmd.current_dir(workspace_dir);
     if option_env!("GITHUB_ACTIONS").is_some() {
         // In continuous integration, warnings are always errors.
