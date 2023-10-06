@@ -16,6 +16,7 @@ fn main() {
                 .value_parser(value_parser!(PathBuf)),
         )
         .arg(arg!(--"fake" "Create fake ROM and FW images"))
+        .arg(arg!(--"incremental" "Create per-invocation target dirs; improves incremental compile time at cost of initial compile time."))
         .get_matches();
 
     let (rom_fwid, fmc_fwid) = if args.is_present("fake") {
@@ -43,9 +44,12 @@ fn main() {
 
     let mut used_filenames = HashSet::new();
     if let Some(all_dir) = args.get_one::<PathBuf>("all_elfs") {
-        for (fwid, elf_bytes) in
-            caliptra_builder::build_firmware_elfs_uncached(None, firmware::REGISTERED_FW).unwrap()
-        {
+        let elfs = if args.is_present("incremental") {
+            caliptra_builder::build_firmware_elfs_fast(firmware::REGISTERED_FW)
+        } else {
+            caliptra_builder::build_firmware_elfs_uncached(None, firmware::REGISTERED_FW)
+        };
+        for (fwid, elf_bytes) in elfs.unwrap() {
             let elf_filename = fwid.elf_filename();
             if !used_filenames.insert(elf_filename.clone()) {
                 panic!("Multiple fwids with filename {elf_filename}")
