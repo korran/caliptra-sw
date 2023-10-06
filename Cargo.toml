@@ -25,6 +25,7 @@ members = [
   "builder",
   "cfi/lib",
   "cfi/derive",
+  "ci-tools/fargo",
   "ci-tools/file-header-fix",
   "ci-tools/size-history",
   "common",
