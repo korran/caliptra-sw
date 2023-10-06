@@ -132,21 +132,13 @@ pub fn build_firmware_elfs_uncached<'a>(
 
     let mut result_map = HashMap::new();
 
+    let target_dir = if let Some(dir) = std::env::var_os("CARGO_TARGET_DIR") {
+        PathBuf::from(dir)
+    } else {
+        Path::new(workspace_dir).join("target")
+    };
+
     for invocation in cargo_invocations {
-        // To prevent a race condition with concurrent calls to caliptra-builder
-        // from other threads or processes, hold a lock until we've read the output
-        // binary from the filesystem (it's possible that another thread will build
-        // the same binary with different features before we get a chance to read it).
-        let _ = fs::create_dir(workspace_dir.join("target"));
-        let lock = File::create(workspace_dir.join("target/.caliptra-builder.lock"))?;
-        nix::fcntl::flock(lock.as_raw_fd(), FlockArg::LockExclusive)?;
-
-        let target_dir = if let Some(dir) = std::env::var_os("CARGO_TARGET_DIR") {
-            PathBuf::from(dir)
-        } else {
-            Path::new(workspace_dir).join("target")
-        };
-
         cargo_invoke(workspace_dir, &target_dir, &invocation, |fwid, elf| {
             result_map.insert(fwid, elf);
         })?;
@@ -172,6 +164,14 @@ fn cargo_invoke<'a>(
 ) -> io::Result<()> {
     const TARGET: &str = "riscv32imc-unknown-none-elf";
     const PROFILE: &str = "firmware";
+
+    // To prevent a race condition with concurrent calls to caliptra-builder
+    // from other threads or processes, hold a lock until we've read the output
+    // binary from the filesystem (it's possible that another thread will build
+    // the same binary with different features before we get a chance to read it).
+    let _ = fs::create_dir(target_dir);
+    let lock = File::create(target_dir.join(".caliptra-builder.lock"))?;
+    nix::fcntl::flock(lock.as_raw_fd(), FlockArg::LockExclusive)?;
 
     let mut features_csv = invocation.features.join(",");
     if !invocation.features.contains(&"riscv") {
