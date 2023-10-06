@@ -127,24 +127,12 @@ pub fn build_firmware_elfs_uncached<'a>(
     workspace_dir: Option<&Path>,
     fwids: &'a [&'a FwId<'a>],
 ) -> io::Result<Vec<(&'a FwId<'a>, Vec<u8>)>> {
-    const TARGET: &str = "riscv32imc-unknown-none-elf";
-    const PROFILE: &str = "firmware";
-
+    let workspace_dir = workspace_dir.unwrap_or_else(|| Path::new(THIS_WORKSPACE_DIR));
     let cargo_invocations = cargo_invocations_from_fwids(fwids)?;
 
     let mut result_map = HashMap::new();
 
     for invocation in cargo_invocations {
-        let mut features_csv = invocation.features.join(",");
-        if !invocation.features.contains(&"riscv") {
-            if !features_csv.is_empty() {
-                features_csv.push(',');
-            }
-            features_csv.push_str("riscv");
-        }
-
-        let workspace_dir = workspace_dir.unwrap_or_else(|| Path::new(THIS_WORKSPACE_DIR));
-
         // To prevent a race condition with concurrent calls to caliptra-builder
         // from other threads or processes, hold a lock until we've read the output
         // binary from the filesystem (it's possible that another thread will build
@@ -153,42 +141,15 @@ pub fn build_firmware_elfs_uncached<'a>(
         let lock = File::create(workspace_dir.join("target/.caliptra-builder.lock"))?;
         nix::fcntl::flock(lock.as_raw_fd(), FlockArg::LockExclusive)?;
 
-        let mut cmd = Command::new(env!("CARGO"));
-        cmd.current_dir(workspace_dir);
-        if option_env!("GITHUB_ACTIONS").is_some() {
-            // In continuous integration, warnings are always errors.
-            cmd.arg("--config")
-                .arg("target.'cfg(all())'.rustflags = [\"-Dwarnings\"]");
-        }
-        cmd.arg("build")
-            .arg("--quiet")
-            .arg("--locked")
-            .arg("--target")
-            .arg(TARGET)
-            .arg("--features")
-            .arg(features_csv)
-            .arg("--no-default-features")
-            .arg("--profile")
-            .arg(PROFILE);
-
-        cmd.arg("-p").arg(invocation.crate_name);
-        for &fwid in invocation.fwids.iter() {
-            cmd.arg("--bin").arg(fwid.bin_name);
-        }
-        run_cmd(&mut cmd)?;
-
         let target_dir = if let Some(dir) = std::env::var_os("CARGO_TARGET_DIR") {
             PathBuf::from(dir)
         } else {
             Path::new(workspace_dir).join("target")
         };
 
-        for &fwid in invocation.fwids.iter() {
-            result_map.insert(
-                fwid,
-                fs::read(target_dir.join(TARGET).join(PROFILE).join(fwid.bin_name))?,
-            );
-        }
+        cargo_invoke(workspace_dir, &target_dir, &invocation, |fwid, elf| {
+            result_map.insert(fwid, elf);
+        })?;
     }
     Ok(fwids
         .iter()
@@ -201,6 +162,56 @@ pub fn build_firmware_elfs_uncached<'a>(
             )
         })
         .collect())
+}
+
+fn cargo_invoke<'a>(
+    workspace_dir: &Path,
+    target_dir: &Path,
+    invocation: &CargoInvocation<'a>,
+    mut fw_callback: impl FnMut(&'a FwId<'a>, Vec<u8>),
+) -> io::Result<()> {
+    const TARGET: &str = "riscv32imc-unknown-none-elf";
+    const PROFILE: &str = "firmware";
+
+    let mut features_csv = invocation.features.join(",");
+    if !invocation.features.contains(&"riscv") {
+        if !features_csv.is_empty() {
+            features_csv.push(',');
+        }
+        features_csv.push_str("riscv");
+    }
+
+    let mut cmd = Command::new(env!("CARGO"));
+    cmd.current_dir(workspace_dir);
+    if option_env!("GITHUB_ACTIONS").is_some() {
+        // In continuous integration, warnings are always errors.
+        cmd.arg("--config")
+            .arg("target.'cfg(all())'.rustflags = [\"-Dwarnings\"]");
+    }
+    cmd.arg("build")
+        .arg("--quiet")
+        .arg("--locked")
+        .arg("--target")
+        .arg(TARGET)
+        .arg("--features")
+        .arg(features_csv)
+        .arg("--no-default-features")
+        .arg("--profile")
+        .arg(PROFILE);
+
+    cmd.arg("-p").arg(invocation.crate_name);
+    for &fwid in invocation.fwids.iter() {
+        cmd.arg("--bin").arg(fwid.bin_name);
+    }
+    run_cmd(&mut cmd)?;
+
+    for &fwid in invocation.fwids.iter() {
+        fw_callback(
+            fwid,
+            fs::read(target_dir.join(TARGET).join(PROFILE).join(fwid.bin_name))?,
+        );
+    }
+    Ok(())
 }
 
 /// Compute the minimum number of cargo invocations to build all the specified
