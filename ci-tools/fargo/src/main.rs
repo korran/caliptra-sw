@@ -248,6 +248,6 @@ fn main() {
     for test_file in test_files {
         let test_name = test_file.file_name().unwrap().to_str().unwrap();
         ssh_cmd(&remote_host, 
-            &format!("bash -c \"RUST_TEST_THREADS=1 CPTRA_UIO_NUM=4 CALIPTRA_PREBUILT_FW_DIR=/tmp/fargo-fw CALIPTRA_IMAGE_NO_GIT_REVISION=1 /tmp/fargo-tests/{test_name} {test_args_str}\"")).unwrap();
+            &format!("bash -c \"RUST_TEST_THREADS=1 CPTRA_UIO_NUM=4 CALIPTRA_PREBUILT_FW_DIR=/tmp/fargo-fw CALIPTRA_IMAGE_NO_GIT_REVISION=1 /tmp/fargo-tests/{test_name} {test_args_str}\" < <(cat; kill -INT 0)")).unwrap();
     }
 }
