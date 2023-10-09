@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 caliptra-builder.workspace = true
 caliptra-builder.sha256 = true
+cargo_metadata.workspace = true
