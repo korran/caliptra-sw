@@ -16,27 +16,29 @@ OUTPUT_ARCH(riscv)
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
 ENTRY(_start)
 
-ROM_ORG          = 0x00000000;
-ICCM_ORG         = 0x40000000;
-DCCM_ORG         = 0x50000000;
-DATA_ORG         = 0x50000000;
-STACK_ORG        = 0x5001C000;
-ESTACK_ORG       = 0x5001F800;
-NSTACK_ORG       = 0x5001FC00;
+ROM_ORG          		  = 0x00000000;
+ICCM_ORG         		  = 0x40000000;
+DCCM_ORG         		  = 0x50000000;
+DATA_ORG         		  = 0x50000000;
+DCCM_POST_CFI_ENTROPY_ORG = 0x50000010;
+STACK_ORG                 = 0x5001C000;
+ESTACK_ORG                = 0x5001F800;
+NSTACK_ORG                = 0x5001FC00;
 
 /* Workaround https://github.com/llvm/llvm-project/issues/62423
  * by allowing lld to exceed the ROM size before relaxation optimizations are
  * applied. To prevent legitimate overflows, caliptra_builder::elf2rom() will
  * ensure that the sections fit within the true 48k ROM size.
  */
-ROM_RELAXATION_PADDING = 4k;
-ROM_SIZE          = 48K;
-ICCM_SIZE         = 128K;
-DCCM_SIZE         = 128K;
-DATA_SIZE         = 996;
-STACK_SIZE        = 14K;
-ESTACK_SIZE       = 1K;
-NSTACK_SIZE       = 1K;
+ROM_RELAXATION_PADDING     = 4k;
+ROM_SIZE                   = 48K;
+ICCM_SIZE                  = 128K;
+DCCM_SIZE                  = 128K;
+DCCM_POST_CFI_ENTROPY_SIZE = 131056; /* DCCM_SIZE - (CFI_XO_S3_ORG + CFI_XO_S1_ORG + CFI_XO_S2_ORG + CFI_XO_S3_ORG) */
+DATA_SIZE                  = 996;
+STACK_SIZE                 = 14K;
+ESTACK_SIZE                = 1K;
+NSTACK_SIZE                = 1K;
 
 MEMORY
 {
