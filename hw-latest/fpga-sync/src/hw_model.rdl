@@ -1,0 +1,81 @@
+
+addrmap hw_model_top {
+    default regwidth = 64;
+    default accesswidth = 64;
+
+    reg {
+        field { sw=rw; hw=r; } pdata[32] = 32'b0;
+        field { sw=rw; hw=r; } paddr[32] = 32'b0;
+    } apb_in0;
+
+    reg {
+        field { sw=rw; hw=r; } psel = 1'b0;
+        field { sw=rw; hw=r; } penable = 1'b0
+        field { sw=rw; hw=r; } pwrite = 1'b0;
+        field { sw=rw; hw=r; } pprot[3] = 3'b0;
+        field { sw=rw; hw=r; } pauser[63:32] = 32'b0;
+    } apb_in1;
+
+    reg {
+        field { sw=r; hw=rw; } pdata[32] = 32'b0;
+        field { sw=r; hw=rw; } pready = 1'b0;
+        field { sw=r; hw=rw; } pslverr = 1'b0;
+    } apb_out;
+
+    reg {
+        field { sw=rw; hw=r; } tck = 1'b0;
+        field { sw=rw; hw=r; } tms = 1'b0;
+        field { sw=rw; hw=r; } tdi = 1'b0;
+        field { sw=rw; hw=r; } trst_n = 1'b0;
+    } jtag_in;
+
+    reg {
+        field { sw=r; hw=rw; } tdo = 1'b0;
+    } jtag_out;
+
+    reg {
+        field { sw=rw; hw=r; } val[64] = 64'b0;
+    } generic_input_wires;
+
+    reg {
+        field { sw=r; hw=rw; } val[64] = 64'b0;
+    } generic_output_wires;
+
+    reg {
+        field { sw=rw; hw=r; } val[64] = 64'b0;
+    } cptra_obf_key[4];
+
+    reg {
+        field { sw=rw; hw=r; } cptra_pwrgood = 1'b0;
+        field { sw=rw; hw=r; } cptra_rst_b = 1'b0;
+
+        field { sw=rw; hw=r; } ss_debug_locked;
+        field { sw=rw; hw=r; } ss_device_lifecycle[2];
+        field { sw=rw; hw=r; } scan_mode = 1'b0;
+
+        field { sw=rw; hw=r; } bootfsm_brkpoint = 1'b0;
+    } control;
+
+    reg {
+        field { sw=r; hw=rw; } cptra_error_fatal = 1'b0;
+        field { sw=r; hw=rw; } cptra_error_non_fatal = 1'b0;
+
+        field { sw=r; hw=rw; } ready_for_fuses = 1'b0;
+        field { sw=r; hw=rw; } ready_for_fw_push = 1'b0;
+        field { sw=r; hw=rw; } ready_for_runtime = 1'b0;
+
+        field { sw=r; hw=rw; } mailbox_data_avail = 1'b0;
+        field { sw=r; hw=rw; } mailbox_flow_done = 1'b0;
+    } status;
+
+    reg {
+        field { sw=rw; hw=r; } itrng_data[4] = 4'b0;
+        field { sw=rw; hw=r; } itrng_valid = 1'b0;
+    } trng_in;
+
+    reg {
+        field { sw=r; hw=rw; } etrng_req = 1'b0;
+    } trng_out;
+
+    
+}
