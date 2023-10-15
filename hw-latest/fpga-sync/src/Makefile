@@ -30,7 +30,7 @@ export CALIPTRA_ROOT = $(realpath ../caliptra-rtl)
 
 suppress = -Wno-WIDTH -Wno-UNOPTFLAT -Wno-LITENDIAN -Wno-CMPCONST -Wno-MULTIDRIVEN -Wno-UNPACKED
 
-out/libcaliptra_fpga_sync_verilated.a: out/V_caliptra_fpga_sync_verilated_ALL.a $(LIB_OBJS) $(VERILATOR_OBJS)
+out/libcaliptra_fpga_sync_verilated.a: out/Vcaliptra_fpga_sync_verilated__ALL.a $(LIB_OBJS) $(VERILATOR_OBJS)
 	cp out/Vcaliptra_fpga_sync_verilated__ALL.a out/.libcaliptra_fpga_sync_verilated.a
 	ar rs out/.libcaliptra_fpga_sync_verilated.a $(LIB_OBJS) $(VERILATOR_OBJS)
 	mv out/.libcaliptra_fpga_sync_verilated.a out/libcaliptra_fpga_sync_verilated.a
@@ -44,7 +44,7 @@ $(VERILATOR_OBJS): out/%.o: $(VERILATOR_INCLUDEDIR)/%.cpp
 $(LIB_OBJS): out/%.o: $(THIS_DIR)/%.cpp
 	$(CXX) -Iout ${CFLAGS} $(VERILATOR_CFLAGS) -c $< -o $@
 
-out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_verilated.sv out
+out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_top.sv out
 	$(VERILATOR)  --cc -CFLAGS "${CFLAGS}" \
 	  --trace \
 	  +libext+.v+.sv +define+RV_OPENSOURCE \
@@ -56,8 +56,10 @@ out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_verilated.sv
 	  -Wno-fatal `#TODO: Remove this line once RTL warnings are fixed` \
 	  --clk aclk \
 	  $(suppress) \
+	  $(THIS_DIR)/axi4lite_intf.sv \
 	  $(THIS_DIR)/caliptra_fpga_sync_regs_pkg.sv \
 	  $(THIS_DIR)/caliptra_fpga_sync_regs.sv \
+	  $(THIS_DIR)/caliptra_fpga_sync_top.sv \
 	  $(EXTRA_VERILATOR_FLAGS) \
 	  --top-module caliptra_fpga_sync_top
 

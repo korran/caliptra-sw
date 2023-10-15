@@ -1,8 +1,9 @@
 
-
-module caliptra_fpga_sync_top(
-        input aclk;
-        input rstn;
+module caliptra_fpga_sync_top
+        import caliptra_fpga_sync_regs_pkg::*;
+    (
+        input aclk,
+        input rstn,
 
         input arvalid,
         input [31:0] araddr,
@@ -12,7 +13,7 @@ module caliptra_fpga_sync_top(
         input rready,
         output rvalid,
         output [63:0] rdata,
-        output [1:0] rresp
+        output [1:0] rresp,
 
         input awvalid,
         input [31:0] awaddr,
@@ -26,36 +27,54 @@ module caliptra_fpga_sync_top(
 
         input bready,
         output bvalid,
-        output [1:0] bresp,
+        output [1:0] bresp
     );
 
-    axi4lite_intf.slave s_axil;
+    axi4lite_intf s_axil ();
+
+    caliptra_fpga_sync_regs__in_t hwif_in;
+    caliptra_fpga_sync_regs__out_t hwif_out;
+
+    assign awready = s_axil.AWREADY;
+    assign wready = s_axil.WREADY;
+    assign bvalid = s_axil.BVALID;
+    assign bresp = s_axil.BRESP;
+    assign arready = s_axil.ARREADY;
+    assign rvalid = s_axil.RVALID;
+    assign rdata = s_axil.RDATA;
+    assign rresp = s_axil.RRESP;
 
     always_comb begin
-        awready = s_axil.AWREADY;
-        s_axis.AWVALID = awvalid;
-        s_axis.AWADDR = awaddr;
-        s_axis.AWPROT = awprot;
+        s_axil.AWVALID = awvalid;
+        s_axil.AWADDR = awaddr;
+        s_axil.AWPROT = awprot;
 
-        wready = s_axil.WREADY;
-        s_axis.WVALID = wvalid;
-        s_axis.WDATA = wdata;
-        s_axis.WSTRB = wstrb;
+        s_axil.WVALID = wvalid;
+        s_axil.WDATA = wdata;
+        s_axil.WSTRB = wstrb;
 
-        s_axis.BREADY = bready;
-        bvalid = s_axil.BVALID;
-        bresp = s_axil.BRESP;
+        s_axil.BREADY = bready;
 
-        arready = s_axil.ARREADY;
-        s_axis.ARVALID = arvalid;
-        s_axis.ARADDR = araddr;
-        s_axis.ARPROT = arprot;
+        s_axil.ARVALID = arvalid;
+        s_axil.ARADDR = araddr;
+        s_axil.ARPROT = arprot;
 
-        s_axis.RREADY = rready;
-        ravlid = s_axil.RVALID;
-        rdata = s_axil.RDATA;
-        rresp = s_axil.RRESP;
+        s_axil.RREADY = rready;
     end
+
+    // Register Block
+    caliptra_fpga_sync_regs regs (
+        .clk(aclk),
+        .rst(1'b0),
+
+        .s_axil(s_axil),
+
+        .hwif_in (hwif_in ),
+        .hwif_out(hwif_out)
+    );
+
+
+    
 
 
 endmodule
