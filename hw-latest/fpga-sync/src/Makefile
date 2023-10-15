@@ -64,7 +64,7 @@ out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_top.sv out
 	  --top-module caliptra_fpga_sync_top
 
 out/Vcaliptra_fpga_sync_verilated__ALL.a: out/Vcaliptra_fpga_sync_verilated.h
-	$(MAKE) -j $(CALIPTRA_VERILATOR_JOBS) -e -C out -f Vcaliptra_fpga_sync_verilated.mk $(VERILATOR_MAKE_FLAGS)
+	$(MAKE) -j $(CALIPTRA_VERILATOR_JOBS) -e -C out -f Vcaliptra_fpga_sync_top.mk $(VERILATOR_MAKE_FLAGS)
 
 clean:
 	rm -r out

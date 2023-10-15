@@ -4,25 +4,37 @@ addrmap caliptra_fpga_sync_regs {
     default accesswidth = 64;
 
     reg {
-        field { sw=rw; hw=r; } pdata[32] = 32'b0;
-        field { sw=rw; hw=r; } paddr[32] = 32'b0;
+        default sw=rw;
+        default hw=r;
+
+        field {} pdata[32] = 32'b0;
+        field {} paddr[32] = 32'b0;
     } apb_in0;
 
     reg {
-        field { sw=rw; hw=r; } psel = 1'b0;
-        field { sw=rw; hw=r; } penable = 1'b0;
-        field { sw=rw; hw=r; } pwrite = 1'b0;
-        field { sw=rw; hw=r; } pprot[3] = 3'b0;
-        field { sw=rw; hw=r; } pauser[63:32] = 32'b0;
+        default sw=rw;
+        default hw=r;
+
+        field {} psel = 1'b0;
+        field {} penable = 1'b0;
+        field {} pwrite = 1'b0;
+        field {} pprot[3] = 3'b0;
+        field {} pauser[63:32] = 32'b0;
     } apb_in1;
 
     reg {
-        field { sw=r; hw=rw; } pdata[32] = 32'b0;
-        field { sw=r; hw=rw; } pready = 1'b0;
-        field { sw=r; hw=rw; } pslverr = 1'b0;
+        default sw=r;
+        default hw=rw;
+
+        field {} pdata[32] = 32'b0;
+        field {} pready = 1'b0;
+        field {} pslverr = 1'b0;
     } apb_out;
 
     reg {
+        default sw=rw;
+        default hw=r;
+
         field { sw=rw; hw=r; } tck = 1'b0;
         field { sw=rw; hw=r; } tms = 1'b0;
         field { sw=rw; hw=r; } tdi = 1'b0;
@@ -30,7 +42,10 @@ addrmap caliptra_fpga_sync_regs {
     } jtag_in;
 
     reg {
-        field { sw=r; hw=rw; } tdo = 1'b0;
+        default sw=r;
+        default hw=rw;
+
+        field {} tdo = 1'b0;
     } jtag_out;
 
     reg {
@@ -42,7 +57,10 @@ addrmap caliptra_fpga_sync_regs {
     } generic_output_wires;
 
     reg {
-        field { sw=rw; hw=r; } val[64] = 64'b0;
+        default sw=rw;
+        default hw=r;
+
+        field {} val[64] = 64'b0;
     } cptra_obf_key[4];
 
     reg {
