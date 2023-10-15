@@ -1,5 +1,5 @@
 
-addrmap hw_model_top {
+addrmap caliptra_fpga_sync_regs {
     default regwidth = 64;
     default accesswidth = 64;
 

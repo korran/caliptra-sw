@@ -14,8 +14,8 @@
 # limitations under the License.
 
 VERILATOR = verilator
-VERILATED_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-CALIPTRA_RTL_DIR := $(realpath $(VERILATED_DIR)../caliptra-rtl)
+THIS_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+CALIPTRA_RTL_DIR := $(realpath $(THIS_DIR)../caliptra-rtl)
 
 CFLAGS := -std=c++11 -fno-exceptions -fPIC
 VERILATOR_MAKE_FLAGS = OPT_FAST="-Os"
@@ -24,16 +24,16 @@ VERILATOR_CFLAGS = $(shell pkg-config --cflags verilator)
 VERILATOR_INCLUDEDIR = $(shell pkg-config --variable=includedir verilator)
 VERILATOR_OBJS = out/verilated_threads.o out/verilated.o out/verilated_vcd_c.o
 
-LIB_OBJS = out/caliptra_verilated.o
+LIB_OBJS = out/caliptra_fpga_sync_verilated.o
 
 export CALIPTRA_ROOT = $(realpath ../caliptra-rtl)
 
 suppress = -Wno-WIDTH -Wno-UNOPTFLAT -Wno-LITENDIAN -Wno-CMPCONST -Wno-MULTIDRIVEN -Wno-UNPACKED
 
-out/libcaliptra_verilated.a: out/Vcaliptra_verilated__ALL.a $(LIB_OBJS) $(VERILATOR_OBJS)
-	cp out/Vcaliptra_verilated__ALL.a out/.libcaliptra_verilated.a
-	ar rs out/.libcaliptra_verilated.a $(LIB_OBJS) $(VERILATOR_OBJS)
-	mv out/.libcaliptra_verilated.a out/libcaliptra_verilated.a
+out/libcaliptra_fpga_sync_verilated.a: out/V_caliptra_fpga_sync_verilated_ALL.a $(LIB_OBJS) $(VERILATOR_OBJS)
+	cp out/Vcaliptra_fpga_sync_verilated__ALL.a out/.libcaliptra_fpga_sync_verilated.a
+	ar rs out/.libcaliptra_fpga_sync_verilated.a $(LIB_OBJS) $(VERILATOR_OBJS)
+	mv out/.libcaliptra_fpga_sync_verilated.a out/libcaliptra_fpga_sync_verilated.a
 
 out:
 	mkdir -p out
@@ -42,10 +42,10 @@ out:
 $(VERILATOR_OBJS): out/%.o: $(VERILATOR_INCLUDEDIR)/%.cpp
 	$(CXX) ${CFLAGS} $(VERILATOR_CFLAGS) -c $< -o $@
 
-$(LIB_OBJS): out/%.o: $(VERILATED_DIR)/%.cpp
+$(LIB_OBJS): out/%.o: $(THIS_DIR)/%.cpp
 	$(CXX) -Iout ${CFLAGS} $(VERILATOR_CFLAGS) -c $< -o $@
 
-out/Vcaliptra_verilated.h: ${VERILATED_DIR}/caliptra_verilated.sv out
+out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_verilated.sv out
 	$(VERILATOR)  --cc -CFLAGS "${CFLAGS}" \
 	  --trace \
 	  +libext+.v+.sv +define+RV_OPENSOURCE \
@@ -58,7 +58,7 @@ out/Vcaliptra_verilated.h: ${VERILATED_DIR}/caliptra_verilated.sv out
 	  --clk core_clk \
 	  $(suppress) \
 	  -f $(CALIPTRA_RTL_DIR)/src/integration/config/caliptra_top_tb.vf \
-	  $(VERILATED_DIR)/caliptra_verilated.sv \
+	  $(THIS_DIR)/caliptra_fpga_sync.sv \
 	  $(EXTRA_VERILATOR_FLAGS) \
 	  --top-module caliptra_verilated
 
