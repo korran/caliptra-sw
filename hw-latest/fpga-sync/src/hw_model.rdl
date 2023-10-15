@@ -10,7 +10,7 @@ addrmap hw_model_top {
 
     reg {
         field { sw=rw; hw=r; } psel = 1'b0;
-        field { sw=rw; hw=r; } penable = 1'b0
+        field { sw=rw; hw=r; } penable = 1'b0;
         field { sw=rw; hw=r; } pwrite = 1'b0;
         field { sw=rw; hw=r; } pprot[3] = 3'b0;
         field { sw=rw; hw=r; } pauser[63:32] = 32'b0;
@@ -76,6 +76,4 @@ addrmap hw_model_top {
     reg {
         field { sw=r; hw=rw; } etrng_req = 1'b0;
     } trng_out;
-
-    
-}
+};
