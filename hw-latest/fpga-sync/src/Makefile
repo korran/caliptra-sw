@@ -38,7 +38,6 @@ out/libcaliptra_fpga_sync_verilated.a: out/V_caliptra_fpga_sync_verilated_ALL.a 
 out:
 	mkdir -p out
 
-
 $(VERILATOR_OBJS): out/%.o: $(VERILATOR_INCLUDEDIR)/%.cpp
 	$(CXX) ${CFLAGS} $(VERILATOR_CFLAGS) -c $< -o $@
 
@@ -55,15 +54,15 @@ out/Vcaliptra_fpga_sync_verilated.h: ${THIS_DIR}/caliptra_fpga_sync_verilated.sv
 	  -Mdir out \
 	  -MMD \
 	  -Wno-fatal `#TODO: Remove this line once RTL warnings are fixed` \
-	  --clk core_clk \
+	  --clk aclk \
 	  $(suppress) \
-	  -f $(CALIPTRA_RTL_DIR)/src/integration/config/caliptra_top_tb.vf \
-	  $(THIS_DIR)/caliptra_fpga_sync.sv \
+	  $(THIS_DIR)/caliptra_fpga_sync_regs_pkg.sv \
+	  $(THIS_DIR)/caliptra_fpga_sync_regs.sv \
 	  $(EXTRA_VERILATOR_FLAGS) \
-	  --top-module caliptra_verilated
+	  --top-module caliptra_fpga_sync_top
 
-out/Vcaliptra_verilated__ALL.a: out/Vcaliptra_verilated.h
-	$(MAKE) -j $(CALIPTRA_VERILATOR_JOBS) -e -C out -f Vcaliptra_verilated.mk $(VERILATOR_MAKE_FLAGS)
+out/Vcaliptra_fpga_sync_verilated__ALL.a: out/Vcaliptra_fpga_sync_verilated.h
+	$(MAKE) -j $(CALIPTRA_VERILATOR_JOBS) -e -C out -f Vcaliptra_fpga_sync_verilated.mk $(VERILATOR_MAKE_FLAGS)
 
 clean:
 	rm -r out

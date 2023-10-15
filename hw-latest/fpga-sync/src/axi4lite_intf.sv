@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 interface axi4lite_intf #(
-    parameter DATA_WIDTH = 32,
+    parameter DATA_WIDTH = 64,
     parameter ADDR_WIDTH = 32
 );
     logic AWREADY;
