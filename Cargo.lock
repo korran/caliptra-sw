@@ -412,6 +412,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "caliptra-fpga-sync-verilated"
+version = "0.1.0"
+
+[[package]]
 name = "caliptra-gen-linker-scripts"
 version = "0.1.0"
 dependencies = [
