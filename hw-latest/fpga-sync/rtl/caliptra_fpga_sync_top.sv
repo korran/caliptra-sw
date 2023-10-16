@@ -81,7 +81,6 @@ module caliptra_fpga_sync_top
     reg aclk_gated_en;
     assign aclk_gated = aclk_gated_en && aclk;
 
-
     always @ (negedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
             aclk_gated_en <= '0;
