@@ -31,7 +31,7 @@ export CALIPTRA_ROOT = $(realpath ../caliptra-rtl)
 suppress = -Wno-WIDTH -Wno-UNOPTFLAT -Wno-LITENDIAN -Wno-CMPCONST -Wno-MULTIDRIVEN -Wno-UNPACKED
 
 out/libcaliptra_fpga_sync_verilated.a: out/Vcaliptra_fpga_sync_verilated__ALL.a $(LIB_OBJS) $(VERILATOR_OBJS)
-	cp out/Vcaliptra_fpga_sync_verilated__ALL.a out/.libcaliptra_fpga_sync_verilated.a
+	cp out/Vcaliptra_fpga_sync_top__ALL.a out/.libcaliptra_fpga_sync_verilated.a
 	ar rs out/.libcaliptra_fpga_sync_verilated.a $(LIB_OBJS) $(VERILATOR_OBJS)
 	mv out/.libcaliptra_fpga_sync_verilated.a out/libcaliptra_fpga_sync_verilated.a
 
