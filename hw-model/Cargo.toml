@@ -11,6 +11,7 @@ edition = "2021"
 default = []
 verilator = ["dep:caliptra-verilated"]
 fpga_realtime = ["dep:uio"]
+fpga_sync = []
 itrng = ["caliptra-verilated?/itrng"]
 
 [dependencies]

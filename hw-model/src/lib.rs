@@ -32,6 +32,9 @@ mod model_verilated;
 #[cfg(feature = "fpga_realtime")]
 mod model_fpga_realtime;
 
+#[cfg(feature = "fpga_sync")]
+mod model_fpga_sync;
+
 mod output;
 mod rv32_builder;
 
@@ -54,13 +57,17 @@ pub enum ShaAccMode {
 #[cfg(feature = "fpga_realtime")]
 pub use model_fpga_realtime::ModelFpgaRealtime;
 
+
+#[cfg(feature = "fpga_sync")]
+pub use model_fpga_sync::ModelFpgaSync;
+
 /// Ideally, general-purpose functions would return `impl HwModel` instead of
 /// `DefaultHwModel` to prevent users from calling functions that aren't
 /// available on all HwModel implementations.  Unfortunately, rust-analyzer
 /// (used by IDEs) can't fully resolve associated types from `impl Trait`, so
 /// such functions should use `DefaultHwModel` until they fix that. Users should
 /// treat `DefaultHwModel` as if it were `impl HwModel`.
-#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime")))]
+#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime"), not(feature = "fpga_sync")))]
 pub type DefaultHwModel = ModelEmulated;
 
 #[cfg(feature = "verilator")]
@@ -68,6 +75,9 @@ pub type DefaultHwModel = ModelVerilated;
 
 #[cfg(feature = "fpga_realtime")]
 pub type DefaultHwModel = ModelFpgaRealtime;
+
+#[cfg(feature = "fpga_sync")]
+pub type DefaultHwModel = ModelFpgaSync;
 
 /// Constructs an HwModel based on the cargo features and environment
 /// variables. Most test cases that need to construct a HwModel should use this
