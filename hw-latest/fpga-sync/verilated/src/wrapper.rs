@@ -40,6 +40,42 @@ impl FpgaSyncVerilated {
             }
         }
     }
+
+
+    pub fn axi_read(&mut self, addr: u32) -> Result<u64, AxiErr> {
+        self.input.arvalid = true;
+        self.input.araddr = addr;
+        self.input.araddr = 0b010;
+
+        self.input.rready = true;
+
+        let mut timeout_cycles = 10000;
+
+        loop {
+            self.next_cycle_high(1);
+            if self.output.arready {
+                self.input.arvalid = false;
+                break;
+            }
+            timeout_cycles -= 1;
+            if timeout_cycles == 0 {
+                return Err(AxiErr::Timeout);
+            }
+        }
+        while !self.output.rvalid {
+            self.next_cycle_high(1);
+            timeout_cycles -= 1;
+            if timeout_cycles == 0 {
+                return Err(AxiErr::Timeout);
+            }
+        }
+        match self.output.rresp {
+            0b10 => return Err(AxiErr::SlvErr),
+            0b11 => return Err(AxiErr::DecErr),
+            _ => {},
+        }
+        Ok(self.output.rdata)
+    }
     
     pub fn axi_write(&mut self, addr: u32, data: u64) -> Result<(), AxiErr> {
         self.input.awvalid = true;
