@@ -421,13 +421,13 @@ module caliptra_fpga_sync_regs (
         } trng_out;
         struct {
             struct {
-                logic next;
-                logic load_next;
-            } go;
-            struct {
                 logic [31:0] next;
                 logic load_next;
             } cycle_count;
+            struct {
+                logic next;
+                logic load_next;
+            } go;
         } clock_control;
         struct {
             struct {
@@ -567,11 +567,11 @@ module caliptra_fpga_sync_regs (
         } trng_out;
         struct {
             struct {
-                logic value;
-            } go;
-            struct {
                 logic [31:0] value;
             } cycle_count;
+            struct {
+                logic value;
+            } go;
         } clock_control;
         struct {
             struct {
@@ -1227,34 +1227,12 @@ module caliptra_fpga_sync_regs (
         end
     end
     assign hwif_out.trng_out.etrng_req.value = field_storage.trng_out.etrng_req.value;
-    // Field: caliptra_fpga_sync_regs.clock_control.go
-    always_comb begin
-        automatic logic [0:0] next_c = field_storage.clock_control.go.value;
-        automatic logic load_next_c = '0;
-        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.clock_control.go.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.clock_control.go.next;
-            load_next_c = '1;
-        end
-        field_combo.clock_control.go.next = next_c;
-        field_combo.clock_control.go.load_next = load_next_c;
-    end
-    always_ff @(posedge clk) begin
-        if(rst) begin
-            field_storage.clock_control.go.value <= 1'h0;
-        end else if(field_combo.clock_control.go.load_next) begin
-            field_storage.clock_control.go.value <= field_combo.clock_control.go.next;
-        end
-    end
-    assign hwif_out.clock_control.go.value = field_storage.clock_control.go.value;
     // Field: caliptra_fpga_sync_regs.clock_control.cycle_count
     always_comb begin
         automatic logic [31:0] next_c = field_storage.clock_control.cycle_count.value;
         automatic logic load_next_c = '0;
         if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.clock_control.cycle_count.value & ~decoded_wr_biten[63:32]) | (decoded_wr_data[63:32] & decoded_wr_biten[63:32]);
+            next_c = (field_storage.clock_control.cycle_count.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
             load_next_c = '1;
         end else begin // HW Write
             next_c = hwif_in.clock_control.cycle_count.next;
@@ -1271,17 +1249,36 @@ module caliptra_fpga_sync_regs (
         end
     end
     assign hwif_out.clock_control.cycle_count.value = field_storage.clock_control.cycle_count.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.go
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.go.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.clock_control.go.value & ~decoded_wr_biten[32:32]) | (decoded_wr_data[32:32] & decoded_wr_biten[32:32]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.go.next = next_c;
+        field_combo.clock_control.go.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.go.value <= 1'h0;
+        end else if(field_combo.clock_control.go.load_next) begin
+            field_storage.clock_control.go.value <= field_combo.clock_control.go.next;
+        end
+    end
+    assign hwif_out.clock_control.go.value = field_storage.clock_control.go.value;
     // Field: caliptra_fpga_sync_regs.counter.counter
     always_comb begin
         automatic logic [63:0] next_c = field_storage.counter.counter.value;
         automatic logic load_next_c = '0;
-        if(decoded_reg_strb.counter && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.counter.counter.value & ~decoded_wr_biten[63:0]) | (decoded_wr_data[63:0] & decoded_wr_biten[63:0]);
-            load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.counter.counter.next;
-            load_next_c = '1;
-        end
+        
+        // HW Write
+        next_c = hwif_in.counter.counter.next;
+        load_next_c = '1;
         field_combo.counter.counter.next = next_c;
         field_combo.counter.counter.load_next = load_next_c;
     end
@@ -1355,9 +1352,9 @@ module caliptra_fpga_sync_regs (
     assign readback_array[13][63:5] = '0;
     assign readback_array[14][0:0] = (decoded_reg_strb.trng_out && !decoded_req_is_wr) ? field_storage.trng_out.etrng_req.value : '0;
     assign readback_array[14][63:1] = '0;
-    assign readback_array[15][0:0] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.go.value : '0;
-    assign readback_array[15][31:1] = '0;
-    assign readback_array[15][63:32] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.cycle_count.value : '0;
+    assign readback_array[15][31:0] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.cycle_count.value : '0;
+    assign readback_array[15][32:32] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.go.value : '0;
+    assign readback_array[15][63:33] = '0;
     assign readback_array[16][63:0] = (decoded_reg_strb.counter && !decoded_req_is_wr) ? field_storage.counter.counter.value : '0;
 
     // Reduce the array

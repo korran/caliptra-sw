@@ -19,11 +19,14 @@ pub struct FpgaSyncVerilated{
 }
 impl FpgaSyncVerilated {
     pub fn new() -> Self {
-        Self{
+        let mut result = Self{
             v: unsafe { bindings::caliptra_fpga_sync_verilated_new() },
             input: Default::default(),
             output: Default::default(),
-        }
+        };
+        result.input.rstn = true;
+
+        result
     }
     pub fn eval(&mut self) {
         unsafe { bindings::caliptra_fpga_sync_verilated_eval(self.v, &self.input, &mut self.output) }

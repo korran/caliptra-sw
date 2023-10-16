@@ -96,11 +96,11 @@ addrmap caliptra_fpga_sync_regs {
     } trng_out;
 
     reg {
-        field { sw=rw; hw=rw; } go = 1'b0;
-        field {} cycle_count[63:32] = 32'b0;
+        field { sw=rw; hw=rw; } cycle_count[31:0] = 32'b0;
+        field { sw=rw; hw=r; singlepulse; } go[32:32] = 1'b0;
     } clock_control;
 
     reg {
-        field {} counter[64] = 64'b0;
+        field { sw=r; hw=rw;} counter[64] = 64'b0;
     } counter;
 };
