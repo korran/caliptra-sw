@@ -94,4 +94,13 @@ addrmap caliptra_fpga_sync_regs {
     reg {
         field { sw=r; hw=rw; } etrng_req = 1'b0;
     } trng_out;
+
+    reg {
+        field { sw=rw; hw=rw; } go = 1'b0;
+        field {} cycle_count[63:32] = 32'b0;
+    } clock_control;
+
+    reg {
+        field {} counter[64] = 64'b0;
+    } counter;
 };

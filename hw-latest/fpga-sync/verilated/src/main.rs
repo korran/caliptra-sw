@@ -15,4 +15,9 @@ fn main() {
     v.axi_write(8, 0xffff_ffff_ffff_ffff).unwrap();
     println!("{:016x}", v.axi_read(8).unwrap());
 
+
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
 }

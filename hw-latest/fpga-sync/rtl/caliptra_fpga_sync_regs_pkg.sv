@@ -4,7 +4,7 @@
 package caliptra_fpga_sync_regs_pkg;
 
     localparam CALIPTRA_FPGA_SYNC_REGS_DATA_WIDTH = 64;
-    localparam CALIPTRA_FPGA_SYNC_REGS_MIN_ADDR_WIDTH = 7;
+    localparam CALIPTRA_FPGA_SYNC_REGS_MIN_ADDR_WIDTH = 8;
 
     typedef struct {
         logic [31:0] next;
@@ -87,11 +87,34 @@ package caliptra_fpga_sync_regs_pkg;
     } caliptra_fpga_sync_regs__trng_out__in_t;
 
     typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__go__in_t;
+
+    typedef struct {
+        logic [31:0] next;
+    } caliptra_fpga_sync_regs__clock_control__cycle_count__in_t;
+
+    typedef struct {
+        caliptra_fpga_sync_regs__clock_control__go__in_t go;
+        caliptra_fpga_sync_regs__clock_control__cycle_count__in_t cycle_count;
+    } caliptra_fpga_sync_regs__clock_control__in_t;
+
+    typedef struct {
+        logic [63:0] next;
+    } caliptra_fpga_sync_regs__counter__counter__in_t;
+
+    typedef struct {
+        caliptra_fpga_sync_regs__counter__counter__in_t counter;
+    } caliptra_fpga_sync_regs__counter__in_t;
+
+    typedef struct {
         caliptra_fpga_sync_regs__apb_out__in_t apb_out;
         caliptra_fpga_sync_regs__jtag_out__in_t jtag_out;
         caliptra_fpga_sync_regs__generic_output_wires__in_t generic_output_wires;
         caliptra_fpga_sync_regs__status__in_t status;
         caliptra_fpga_sync_regs__trng_out__in_t trng_out;
+        caliptra_fpga_sync_regs__clock_control__in_t clock_control;
+        caliptra_fpga_sync_regs__counter__in_t counter;
     } caliptra_fpga_sync_regs__in_t;
 
     typedef struct {
@@ -301,6 +324,27 @@ package caliptra_fpga_sync_regs_pkg;
     } caliptra_fpga_sync_regs__trng_out__out_t;
 
     typedef struct {
+        logic value;
+    } caliptra_fpga_sync_regs__clock_control__go__out_t;
+
+    typedef struct {
+        logic [31:0] value;
+    } caliptra_fpga_sync_regs__clock_control__cycle_count__out_t;
+
+    typedef struct {
+        caliptra_fpga_sync_regs__clock_control__go__out_t go;
+        caliptra_fpga_sync_regs__clock_control__cycle_count__out_t cycle_count;
+    } caliptra_fpga_sync_regs__clock_control__out_t;
+
+    typedef struct {
+        logic [63:0] value;
+    } caliptra_fpga_sync_regs__counter__counter__out_t;
+
+    typedef struct {
+        caliptra_fpga_sync_regs__counter__counter__out_t counter;
+    } caliptra_fpga_sync_regs__counter__out_t;
+
+    typedef struct {
         caliptra_fpga_sync_regs__apb_in0__out_t apb_in0;
         caliptra_fpga_sync_regs__apb_in1__out_t apb_in1;
         caliptra_fpga_sync_regs__apb_out__out_t apb_out;
@@ -313,5 +357,7 @@ package caliptra_fpga_sync_regs_pkg;
         caliptra_fpga_sync_regs__status__out_t status;
         caliptra_fpga_sync_regs__trng_in__out_t trng_in;
         caliptra_fpga_sync_regs__trng_out__out_t trng_out;
+        caliptra_fpga_sync_regs__clock_control__out_t clock_control;
+        caliptra_fpga_sync_regs__counter__out_t counter;
     } caliptra_fpga_sync_regs__out_t;
 endpackage

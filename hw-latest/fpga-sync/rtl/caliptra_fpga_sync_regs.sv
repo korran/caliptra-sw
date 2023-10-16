@@ -16,7 +16,7 @@ module caliptra_fpga_sync_regs (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [6:0] cpuif_addr;
+    logic [7:0] cpuif_addr;
     logic [63:0] cpuif_wr_data;
     logic [63:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -33,10 +33,10 @@ module caliptra_fpga_sync_regs (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [6:0] axil_araddr;
+    logic [7:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [6:0] axil_awaddr;
+    logic [7:0] axil_awaddr;
     logic axil_wvalid;
     logic [63:0] axil_wdata;
     logic [7:0] axil_wstrb;
@@ -114,17 +114,17 @@ module caliptra_fpga_sync_regs (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[6:3], 3'b0};
+                cpuif_addr = {axil_araddr[7:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[6:3], 3'b0};
+                cpuif_addr = {axil_awaddr[7:3], 3'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[6:3], 3'b0};
+                cpuif_addr = {axil_araddr[7:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -221,6 +221,8 @@ module caliptra_fpga_sync_regs (
         logic status;
         logic trng_in;
         logic trng_out;
+        logic clock_control;
+        logic counter;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_req;
@@ -229,20 +231,22 @@ module caliptra_fpga_sync_regs (
     logic [63:0] decoded_wr_biten;
 
     always_comb begin
-        decoded_reg_strb.apb_in0 = cpuif_req_masked & (cpuif_addr == 7'h0);
-        decoded_reg_strb.apb_in1 = cpuif_req_masked & (cpuif_addr == 7'h8);
-        decoded_reg_strb.apb_out = cpuif_req_masked & (cpuif_addr == 7'h10);
-        decoded_reg_strb.jtag_in = cpuif_req_masked & (cpuif_addr == 7'h18);
-        decoded_reg_strb.jtag_out = cpuif_req_masked & (cpuif_addr == 7'h20);
-        decoded_reg_strb.generic_input_wires = cpuif_req_masked & (cpuif_addr == 7'h28);
-        decoded_reg_strb.generic_output_wires = cpuif_req_masked & (cpuif_addr == 7'h30);
+        decoded_reg_strb.apb_in0 = cpuif_req_masked & (cpuif_addr == 8'h0);
+        decoded_reg_strb.apb_in1 = cpuif_req_masked & (cpuif_addr == 8'h8);
+        decoded_reg_strb.apb_out = cpuif_req_masked & (cpuif_addr == 8'h10);
+        decoded_reg_strb.jtag_in = cpuif_req_masked & (cpuif_addr == 8'h18);
+        decoded_reg_strb.jtag_out = cpuif_req_masked & (cpuif_addr == 8'h20);
+        decoded_reg_strb.generic_input_wires = cpuif_req_masked & (cpuif_addr == 8'h28);
+        decoded_reg_strb.generic_output_wires = cpuif_req_masked & (cpuif_addr == 8'h30);
         for(int i0=0; i0<4; i0++) begin
-            decoded_reg_strb.cptra_obf_key[i0] = cpuif_req_masked & (cpuif_addr == 7'h38 + i0*7'h8);
+            decoded_reg_strb.cptra_obf_key[i0] = cpuif_req_masked & (cpuif_addr == 8'h38 + i0*8'h8);
         end
-        decoded_reg_strb.control = cpuif_req_masked & (cpuif_addr == 7'h58);
-        decoded_reg_strb.status = cpuif_req_masked & (cpuif_addr == 7'h60);
-        decoded_reg_strb.trng_in = cpuif_req_masked & (cpuif_addr == 7'h68);
-        decoded_reg_strb.trng_out = cpuif_req_masked & (cpuif_addr == 7'h70);
+        decoded_reg_strb.control = cpuif_req_masked & (cpuif_addr == 8'h58);
+        decoded_reg_strb.status = cpuif_req_masked & (cpuif_addr == 8'h60);
+        decoded_reg_strb.trng_in = cpuif_req_masked & (cpuif_addr == 8'h68);
+        decoded_reg_strb.trng_out = cpuif_req_masked & (cpuif_addr == 8'h70);
+        decoded_reg_strb.clock_control = cpuif_req_masked & (cpuif_addr == 8'h78);
+        decoded_reg_strb.counter = cpuif_req_masked & (cpuif_addr == 8'h80);
     end
 
     // Pass down signals to next stage
@@ -415,6 +419,22 @@ module caliptra_fpga_sync_regs (
                 logic load_next;
             } etrng_req;
         } trng_out;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } go;
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } cycle_count;
+        } clock_control;
+        struct {
+            struct {
+                logic [63:0] next;
+                logic load_next;
+            } counter;
+        } counter;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -545,6 +565,19 @@ module caliptra_fpga_sync_regs (
                 logic value;
             } etrng_req;
         } trng_out;
+        struct {
+            struct {
+                logic value;
+            } go;
+            struct {
+                logic [31:0] value;
+            } cycle_count;
+        } clock_control;
+        struct {
+            struct {
+                logic [63:0] value;
+            } counter;
+        } counter;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -1194,6 +1227,72 @@ module caliptra_fpga_sync_regs (
         end
     end
     assign hwif_out.trng_out.etrng_req.value = field_storage.trng_out.etrng_req.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.go
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.go.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.clock_control.go.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.go.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.go.next = next_c;
+        field_combo.clock_control.go.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.go.value <= 1'h0;
+        end else if(field_combo.clock_control.go.load_next) begin
+            field_storage.clock_control.go.value <= field_combo.clock_control.go.next;
+        end
+    end
+    assign hwif_out.clock_control.go.value = field_storage.clock_control.go.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.cycle_count
+    always_comb begin
+        automatic logic [31:0] next_c = field_storage.clock_control.cycle_count.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.clock_control.cycle_count.value & ~decoded_wr_biten[63:32]) | (decoded_wr_data[63:32] & decoded_wr_biten[63:32]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.cycle_count.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.cycle_count.next = next_c;
+        field_combo.clock_control.cycle_count.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.cycle_count.value <= 32'h0;
+        end else if(field_combo.clock_control.cycle_count.load_next) begin
+            field_storage.clock_control.cycle_count.value <= field_combo.clock_control.cycle_count.next;
+        end
+    end
+    assign hwif_out.clock_control.cycle_count.value = field_storage.clock_control.cycle_count.value;
+    // Field: caliptra_fpga_sync_regs.counter.counter
+    always_comb begin
+        automatic logic [63:0] next_c = field_storage.counter.counter.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.counter && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.counter.counter.value & ~decoded_wr_biten[63:0]) | (decoded_wr_data[63:0] & decoded_wr_biten[63:0]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.counter.counter.next;
+            load_next_c = '1;
+        end
+        field_combo.counter.counter.next = next_c;
+        field_combo.counter.counter.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.counter.counter.value <= 64'h0;
+        end else if(field_combo.counter.counter.load_next) begin
+            field_storage.counter.counter.value <= field_combo.counter.counter.next;
+        end
+    end
+    assign hwif_out.counter.counter.value = field_storage.counter.counter.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1211,7 +1310,7 @@ module caliptra_fpga_sync_regs (
     logic [63:0] readback_data;
     
     // Assign readback values to a flattened array
-    logic [63:0] readback_array[15];
+    logic [63:0] readback_array[17];
     assign readback_array[0][31:0] = (decoded_reg_strb.apb_in0 && !decoded_req_is_wr) ? field_storage.apb_in0.pdata.value : '0;
     assign readback_array[0][63:32] = (decoded_reg_strb.apb_in0 && !decoded_req_is_wr) ? field_storage.apb_in0.paddr.value : '0;
     assign readback_array[1][0:0] = (decoded_reg_strb.apb_in1 && !decoded_req_is_wr) ? field_storage.apb_in1.psel.value : '0;
@@ -1256,6 +1355,10 @@ module caliptra_fpga_sync_regs (
     assign readback_array[13][63:5] = '0;
     assign readback_array[14][0:0] = (decoded_reg_strb.trng_out && !decoded_req_is_wr) ? field_storage.trng_out.etrng_req.value : '0;
     assign readback_array[14][63:1] = '0;
+    assign readback_array[15][0:0] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.go.value : '0;
+    assign readback_array[15][31:1] = '0;
+    assign readback_array[15][63:32] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.cycle_count.value : '0;
+    assign readback_array[16][63:0] = (decoded_reg_strb.counter && !decoded_req_is_wr) ? field_storage.counter.counter.value : '0;
 
     // Reduce the array
     always_comb begin
@@ -1263,7 +1366,7 @@ module caliptra_fpga_sync_regs (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<15; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<17; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 

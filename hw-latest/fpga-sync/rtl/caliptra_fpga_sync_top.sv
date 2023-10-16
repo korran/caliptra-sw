@@ -35,6 +35,8 @@ module caliptra_fpga_sync_top
     caliptra_fpga_sync_regs__in_t hwif_in;
     caliptra_fpga_sync_regs__out_t hwif_out;
 
+    reg [63:0] counter;
+
     assign awready = s_axil.AWREADY;
     assign wready = s_axil.WREADY;
     assign bvalid = s_axil.BVALID;
@@ -69,12 +71,17 @@ module caliptra_fpga_sync_top
 
         .s_axil(s_axil),
 
-        .hwif_in (hwif_in ),
+        .hwif_in (hwif_in),
         .hwif_out(hwif_out)
     );
 
 
-    
+    always @ (posedge aclk) begin : reg_update
+        counter[63:0] <= counter[63:0] + 64'b1;
+    end // reg_update
 
+    always_comb begin
+        hwif_in.counter.counter.next[63:0] = counter[63:0];
+    end
 
 endmodule
