@@ -45,7 +45,7 @@ fn main() {
 
     run_command(&mut make_cmd);
     println!("cargo:rustc-link-search={}/out", manifest_dir.display());
-    println!("cargo:rustc-link-lib=static=caliptra_verilated");
+    println!("cargo:rustc-link-lib=static=caliptra_fpga_sync_verilated");
     println!("cargo:rustc-link-lib=dylib=stdc++");
 }
 

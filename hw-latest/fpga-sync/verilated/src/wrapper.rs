@@ -4,6 +4,7 @@ use crate::bindings;
 pub use crate::bindings::caliptra_fpga_sync_sig_in as SigIn;
 pub use crate::bindings::caliptra_fpga_sync_sig_out as SigOut;
 
+#[derive(Debug)]
 pub enum AxiErr {
     Timeout = 1,
     SlvErr = 2,
@@ -41,11 +42,10 @@ impl FpgaSyncVerilated {
         }
     }
 
-
     pub fn axi_read(&mut self, addr: u32) -> Result<u64, AxiErr> {
         self.input.arvalid = true;
         self.input.araddr = addr;
-        self.input.araddr = 0b010;
+        self.input.arprot = 0b010;
 
         self.input.rready = true;
 
