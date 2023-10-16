@@ -79,17 +79,17 @@ module caliptra_fpga_sync_top
 
     reg [31:0] aclk_gated_cycle_count;
     reg aclk_gated_en;
-    assign aclk_gated = aclk_gated_en ? aclk : '0;
+    assign aclk_gated = aclk_gated_en && aclk;
 
 
-    always @ (posedge aclk or negedge rstn) begin : reg_update
+    always @ (negedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
             aclk_gated_en <= '0;
         end
         else begin
             if (hwif_out.clock_control.go.value)
             begin
-                aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value;
+                aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value - 1;
                 aclk_gated_en <= 1'b1;
             end
             else if (aclk_gated_cycle_count > 0) begin
@@ -98,12 +98,12 @@ module caliptra_fpga_sync_top
             else begin
                 aclk_gated_en <= '0;
             end
-            counter <= counter + 1;
         end
     end
 
-    //always @ (posedge aclk_gated) begin : reg_update_gated
-    //end // reg_update_gated
+    always @ (posedge aclk_gated) begin : reg_update_gated
+        counter <= counter + 1;
+    end // reg_update_gated
 
     always_comb begin
         hwif_in.clock_control.cycle_count.next = aclk_gated_cycle_count;

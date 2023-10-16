@@ -15,18 +15,27 @@ fn main() {
     v.axi_write(8, 0xffff_ffff_ffff_ffff).unwrap();
     println!("{:016x}", v.axi_read(8).unwrap());
 
-    v.axi_write(120, 0x123 | 0x1_0000_0000).unwrap();
-    for i in 0..200 {
-        println!("{:x}", v.axi_read(120).unwrap());
-    }
 
+
+    v.axi_write(120, 0x1 | 0x1_0000_0000).unwrap();
 
     println!("{:016x}", v.axi_read(128).unwrap());
     println!("{:016x}", v.axi_read(128).unwrap());
     println!("{:016x}", v.axi_read(128).unwrap());
     println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
 
-    v.next_cycle_high(253);
+
+    v.axi_write(120, 0x1 | 0x1_0000_0000).unwrap();
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
+
+
+    v.axi_write(120, 4 | 0x1_0000_0000).unwrap();
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
+    println!("{:016x}", v.axi_read(128).unwrap());
     println!("{:016x}", v.axi_read(128).unwrap());
     
 }
