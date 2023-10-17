@@ -233,7 +233,7 @@ impl crate::HwModel for ModelFpgaSync {
 
         println!("WRiting ROM image");
 
-        //m.write_rom_image(params.rom)?;
+        m.write_rom_image(params.rom)?;
         println!("Finished writing ROM image");
 
         m.tb().control().modify(|w| w.cptra_pwrgood(true));

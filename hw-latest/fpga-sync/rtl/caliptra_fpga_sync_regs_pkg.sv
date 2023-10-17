@@ -348,7 +348,7 @@ package caliptra_fpga_sync_regs_pkg;
 
     typedef struct {
         logic req;
-        logic [12:0] addr;
+        logic [15:0] addr;
         logic req_is_wr;
         logic [63:0] wr_data;
         logic [63:0] wr_biten;

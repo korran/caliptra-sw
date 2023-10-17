@@ -271,8 +271,8 @@ module caliptra_fpga_sync_regs (
         decoded_reg_strb.trng_out = cpuif_req_masked & (cpuif_addr == 17'h70);
         decoded_reg_strb.clock_control = cpuif_req_masked & (cpuif_addr == 17'h78);
         decoded_reg_strb.counter = cpuif_req_masked & (cpuif_addr == 17'h80);
-        decoded_reg_strb.rom_mem = cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'h1fff);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'h1fff);
+        decoded_reg_strb.rom_mem = cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'hbfff);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'hbfff);
         decoded_strb_is_external = is_external;
         external_req = is_external;
     
@@ -1322,7 +1322,7 @@ module caliptra_fpga_sync_regs (
     end
     assign hwif_out.counter.counter.value = field_storage.counter.counter.value;
     assign hwif_out.rom_mem.req = decoded_reg_strb.rom_mem;
-    assign hwif_out.rom_mem.addr = decoded_addr[13:0];
+    assign hwif_out.rom_mem.addr = decoded_addr[15:0];
     assign hwif_out.rom_mem.req_is_wr = decoded_req_is_wr;
     assign hwif_out.rom_mem.wr_data = decoded_wr_data;
     assign hwif_out.rom_mem.wr_biten = decoded_wr_biten;

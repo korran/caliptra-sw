@@ -242,8 +242,8 @@ module caliptra_fpga_sync_top
         .rdata_o(mbox_sram_rdata)
     );
 
-    assign hwif_in.rom_mem.rd_ack = '1;
-    assign hwif_in.rom_mem.wr_ack = '1;
+    assign hwif_in.rom_mem.rd_ack = hwif_out.rom_mem.req && !hwif_out.rom_mem.req_is_wr;
+    assign hwif_in.rom_mem.wr_ack = hwif_out.rom_mem.req && hwif_out.rom_mem.req_is_wr;
 
     //SRAM for imem
     caliptra_sram_dual #(
@@ -261,7 +261,7 @@ module caliptra_fpga_sync_top
         .b_clk_i   (aclk),
         .b_cs_i    (hwif_out.rom_mem.req),
         .b_we_i    (hwif_out.rom_mem.req_is_wr),
-        .b_addr_i  (hwif_out.rom_mem.addr),
+        .b_addr_i  (hwif_out.rom_mem.addr[15:3]),
         .b_wdata_i (hwif_out.rom_mem.wr_data),
         .b_rdata_o (hwif_in.rom_mem.rd_data)
     );
