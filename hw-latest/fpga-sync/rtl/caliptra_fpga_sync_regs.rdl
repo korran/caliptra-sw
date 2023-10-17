@@ -103,4 +103,9 @@ addrmap caliptra_fpga_sync_regs {
     reg {
         field { sw=r; hw=rw;} counter[64] = 64'b0;
     } counter;
+
+    mem {
+        mementries = 1024;
+        memwidth = 64;
+    } external rom_mem @ 0x10000;
 };

@@ -1,6 +1,8 @@
 
+use std::error::Error;
 use std::ffi::CString;
 use std::ffi::NulError;
+use std::fmt::Display;
 use std::ptr::null;
 
 use crate::bindings;
@@ -13,6 +15,12 @@ pub enum AxiErr {
     Timeout = 1,
     SlvErr = 2,
     DecErr = 3,
+}
+impl Error for AxiErr {}
+impl Display for AxiErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
 }
 
 pub struct FpgaSyncVerilated{
@@ -36,10 +44,6 @@ impl FpgaSyncVerilated {
 
     pub fn total_cycles(&self) -> u64 {
         0
-    }
-
-    pub fn write_rom_image(&mut self, image: &[u8]) {
-
     }
 
     pub fn eval(&mut self) {

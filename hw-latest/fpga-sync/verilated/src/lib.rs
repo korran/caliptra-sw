@@ -4,7 +4,7 @@ mod bindings;
 
 mod wrapper;
 
-pub use wrapper::FpgaSyncVerilated;
+pub use wrapper::{AxiErr, FpgaSyncVerilated};
 
 #[cfg(test)]
 mod tests {

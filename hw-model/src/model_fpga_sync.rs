@@ -5,7 +5,7 @@ use crate::EtrngResponse;
 use crate::{HwModel, TrngMode};
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
-use caliptra_fpga_sync_verilated::FpgaSyncVerilated;
+use caliptra_fpga_sync_verilated::{FpgaSyncVerilated, AxiErr};
 use caliptra_hw_model_types::ErrorInjectionMode;
 use std::cell::{Cell, RefCell};
 use std::io::Write;
@@ -137,6 +137,22 @@ impl ModelFpgaSync {
             }
         }
     }
+
+    /// Writes a ROM image to the RAM backing the "fake ROM". Typically this should be
+    /// done before asserting cptra_pwrgood and cptra_rst_b.
+    pub fn write_rom_image(&mut self, image: &[u8]) -> Result<(), AxiErr> {
+        // TODO: bounds check length against ROM size?
+        for (chunk_index, data) in image.chunks_exact(8).enumerate() {
+            // panic is impossible because an 8-byte slice-ref will always
+            // convert into an 8-byte array-ref.
+            let data = u64::from_le_bytes(data.try_into().unwrap());
+            let addr = 0x1_0000 + u32::try_from(chunk_index*8).unwrap();
+            println!("Writing to address {:x}", addr);
+            self.v.axi_write(addr, data)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl crate::HwModel for ModelFpgaSync {
@@ -189,7 +205,6 @@ impl crate::HwModel for ModelFpgaSync {
         }
         let mut v = FpgaSyncVerilated::new();
 
-        v.write_rom_image(params.rom);
 
         let mut m = ModelFpgaSync {
             v,
@@ -211,6 +226,15 @@ impl crate::HwModel for ModelFpgaSync {
         };
 
         m.tracing_hint(true);
+
+        m.v.next_cycle_high(1);
+        m.v.next_cycle_high(1);
+        m.v.next_cycle_high(1);
+
+        println!("WRiting ROM image");
+
+        //m.write_rom_image(params.rom)?;
+        println!("Finished writing ROM image");
 
         m.tb().control().modify(|w| w.cptra_pwrgood(true));
         m.step();

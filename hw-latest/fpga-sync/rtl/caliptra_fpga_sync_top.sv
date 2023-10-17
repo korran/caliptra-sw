@@ -137,10 +137,10 @@ module caliptra_fpga_sync_top
         .cptra_rst_b                (hwif_out.control.cptra_rst_b.value),
         .clk                        (aclk_gated),
 
-        .cptra_obf_key              ({hwif_out.cptra_obf_key[0].val.value,
-                                    hwif_out.cptra_obf_key[1].val.value,
-                                    hwif_out.cptra_obf_key[2].val.value,
-                                    hwif_out.cptra_obf_key[3].val.value}),
+        .cptra_obf_key              ({hwif_out.cptra_obf_key[0].value.value,
+                                    hwif_out.cptra_obf_key[1].value.value,
+                                    hwif_out.cptra_obf_key[2].value.value,
+                                    hwif_out.cptra_obf_key[3].value.value}),
 
         .jtag_tck(1'b0),
         .jtag_tdi(1'b0),
@@ -185,8 +185,8 @@ module caliptra_fpga_sync_top
         .mailbox_flow_done(),
         .BootFSM_BrkPoint('x), //FIXME TIE-OFF
 
-        .generic_input_wires(hwif_out.generic_input_wires.val.value), //FIXME TIE-OFF
-        .generic_output_wires(hwif_in.generic_output_wires.val.next),
+        .generic_input_wires(hwif_out.generic_input_wires.value.value), //FIXME TIE-OFF
+        .generic_output_wires(hwif_in.generic_output_wires.value.next),
 
         .scan_mode(),
 
@@ -242,19 +242,28 @@ module caliptra_fpga_sync_top
         .rdata_o(mbox_sram_rdata)
     );
 
+    assign hwif_in.rom_mem.rd_ack = '1;
+    assign hwif_in.rom_mem.wr_ack = '1;
+
     //SRAM for imem
-    caliptra_sram #(
+    caliptra_sram_dual #(
         .DEPTH     (`CALIPTRA_IMEM_DEPTH     ), // Depth in WORDS
         .DATA_WIDTH(`CALIPTRA_IMEM_DATA_WIDTH),
         .ADDR_WIDTH(`CALIPTRA_IMEM_ADDR_WIDTH)
     ) imem_inst1 (
-        .clk_i   (aclk_gated),
+        .a_clk_i   (aclk_gated),
+        .a_cs_i    (imem_cs),
+        .a_we_i    (),
+        .a_addr_i  (imem_addr),
+        .a_wdata_i (),
+        .a_rdata_o (imem_rdata),
 
-        .cs_i    (imem_cs),
-        .we_i    (),
-        .addr_i  (imem_addr),
-        .wdata_i (),
-        .rdata_o (imem_rdata                         )
+        .b_clk_i   (aclk),
+        .b_cs_i    (hwif_out.rom_mem.req),
+        .b_we_i    (hwif_out.rom_mem.req_is_wr),
+        .b_addr_i  (hwif_out.rom_mem.addr),
+        .b_wdata_i (hwif_out.rom_mem.wr_data),
+        .b_rdata_o (hwif_in.rom_mem.rd_data)
     );
 
     // This is used to load the generated ICCM hexfile prior to
@@ -291,5 +300,63 @@ module caliptra_fpga_sync_top
         .wdata_i (        ),
         .rdata_o (        )
     );
+
+endmodule
+
+
+module caliptra_sram_dual #(
+     parameter DEPTH      = 64
+    ,parameter DATA_WIDTH = 32
+    ,parameter ADDR_WIDTH = $clog2(DEPTH)
+
+    )
+    (
+    input  logic                       a_clk_i,
+
+    input  logic                       a_cs_i,
+    input  logic                       a_we_i,
+    input  logic [ADDR_WIDTH-1:0]      a_addr_i,
+    input  logic [DATA_WIDTH-1:0]      a_wdata_i,
+    output logic [DATA_WIDTH-1:0]      a_rdata_o,
+
+    input  logic                       b_clk_i,
+
+    input  logic                       b_cs_i,
+    input  logic                       b_we_i,
+    input  logic [ADDR_WIDTH-1:0]      b_addr_i,
+    input  logic [DATA_WIDTH-1:0]      b_wdata_i,
+    output logic [DATA_WIDTH-1:0]      b_rdata_o
+    );
+
+    localparam NUM_BYTES = DATA_WIDTH/8 + ((DATA_WIDTH % 8) ? 1 : 0);
+
+    //storage element
+    logic [7:0] ram [DEPTH][NUM_BYTES-1:0];
+
+    always @(posedge a_clk_i) begin
+        if (a_cs_i & a_we_i) begin
+            for (int i = 0; i < NUM_BYTES; i++) begin
+                ram[a_addr_i][i] <= a_wdata_i[i*8 +: 8];
+            end
+        end
+        if (a_cs_i & ~a_we_i) begin
+            for (int i = 0; i < NUM_BYTES; i++) begin
+                a_rdata_o[i*8 +: 8] <= ram[a_addr_i][i];
+            end
+        end
+    end
+
+    always @(posedge b_clk_i) begin
+        if (b_cs_i & b_we_i) begin
+            for (int i = 0; i < NUM_BYTES; i++) begin
+                ram[b_addr_i][i] <= b_wdata_i[i*8 +: 8];
+            end
+        end
+        if (b_cs_i & ~b_we_i) begin
+            for (int i = 0; i < NUM_BYTES; i++) begin
+                b_rdata_o[i*8 +: 8] <= ram[b_addr_i][i];
+            end
+        end
+    end
 
 endmodule
