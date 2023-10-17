@@ -35,7 +35,7 @@ impl FpgaSyncVerilated {
     }
 
     pub fn total_cycles(&self) -> u64 {
-        todo!();
+        0
     }
 
     pub fn write_rom_image(&mut self, image: &[u8]) {

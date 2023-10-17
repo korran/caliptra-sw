@@ -104,8 +104,9 @@ impl ModelFpgaSync {
         self.tb().apb_in1().write(|w| w.psel(true).penable(true).pwrite(false).pauser(pauser.into()).pprot(0));
         
         loop {
-            self.step();
+            // WARNING: This is wonky...
             let apb_out = self.tb().apb_out().read();
+            self.step();
             if apb_out.pready() {
                 self.tb().apb_in1().write(|w| w.psel(false).penable(false));
                 return Ok(apb_out.pdata() as u32);
@@ -216,11 +217,17 @@ impl crate::HwModel for ModelFpgaSync {
 
         m.tb().control().modify(|w| w.cptra_rst_b(true));
         m.step();
+        m.step();
+        m.step();
+        m.step();
+        m.step();
+        m.step();
 
         while !m.tb().status().read().ready_for_fuses() {
             m.step();
         }
         writeln!(m.output().logger(), "ready_for_fuses is high")?;
+
         Ok(m)
     }
 
