@@ -25,6 +25,7 @@ openssl.workspace = true
 
 [features]
 fpga_realtime = ["caliptra-hw-model/fpga_realtime"]
+fpga_sync = ["caliptra-hw-model/fpga_sync"]
 itrng = ["caliptra-hw-model/itrng"]
 verilator = ["caliptra-hw-model/verilator"]
 fips_self_test = ["caliptra-runtime/fips_self_test"]

@@ -13,7 +13,7 @@ edition = "2021"
 # with the verilator srcs. It's disabled by default because we don't want folks
 # to have to install verilator (and endure the painfully slow build) when doing
 # a workspace-wide "cargo build".
-verilator = []
+fpga_sync = []
 
 # Whether to build the verilog with CALIPTRA_INTERNAL_TRNG defined
 itrng = []

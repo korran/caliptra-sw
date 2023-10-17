@@ -101,6 +101,7 @@ caliptra-emu-derive = { path = "sw-emulator/lib/derive" }
 caliptra-emu-periph = { path = "sw-emulator/lib/periph" }
 caliptra-emu-types = { path = "sw-emulator/lib/types" }
 caliptra-error = { path = "error", default-features = false }
+caliptra-fpga-sync-verilated = { path = "hw-latest/fpga-sync/verilated", features = ["fpga_sync"] }
 caliptra-fpga-boss = { path = "ci-tools/fpga-boss" }
 caliptra-gen-linker-scripts = { path = "cpu/gen" }
 caliptra-hw-model = { path = "hw-model" }

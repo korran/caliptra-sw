@@ -15,9 +15,10 @@ pub struct FpgaSyncVerilated{
     v: *mut crate::bindings::caliptra_fpga_sync_verilated,
     pub input: SigIn,
     pub output: SigOut,
-
 }
 impl FpgaSyncVerilated {
+
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let mut result = Self{
             v: unsafe { bindings::caliptra_fpga_sync_verilated_new() },
@@ -28,6 +29,16 @@ impl FpgaSyncVerilated {
 
         result
     }
+
+    pub fn total_cycles(&self) -> u64 {
+        todo!();
+
+    }
+
+    pub fn write_rom_image(&mut self, image: &[u8]) {
+        todo!();
+    }
+
     pub fn eval(&mut self) {
         unsafe { bindings::caliptra_fpga_sync_verilated_eval(self.v, &self.input, &mut self.output) }
     }

@@ -32,7 +32,7 @@ fn run_command(cmd: &mut process::Command) {
 }
 
 fn main() {
-    if std::env::var_os("CARGO_FEATURE_VERILATOR").is_none() {
+    if std::env::var_os("CARGO_FEATURE_FPGA_SYNC").is_none() {
         return;
     }
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -44,7 +44,6 @@ fn main() {
     }
 
     run_command(&mut make_cmd);
-
 
     println!("cargo:rerun-if-changed={}", manifest_dir.join("out/libcaliptra_fpga_sync_verilated.a").display());
     println!("cargo:rustc-link-search={}/out", manifest_dir.display());

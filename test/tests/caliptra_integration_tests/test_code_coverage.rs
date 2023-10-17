@@ -1,5 +1,5 @@
 // Licensed under the Apache-2.0 license
-#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime")))]
+#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime"), not(feature = "fpga_sync")))]
 #[test]
 fn test_emu_coverage() {
     use caliptra_builder::firmware::ROM_WITH_UART;
