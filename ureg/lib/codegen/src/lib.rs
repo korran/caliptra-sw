@@ -372,7 +372,7 @@ fn generate_register(reg: &RegisterType) -> TokenStream {
     for field in reg.fields.iter() {
         let field_ident = snake_ident(&field.name);
         let position = Literal::u64_unsuffixed(field.position.into());
-        let mask = hex_literal((1u64 << field.width) - 1);
+        let mask = hex_literal(u64::try_from((1u128 << field.width) - 1).unwrap());
         let access_expr = quote! {
             (self.0 >> #position) & #mask
         };
@@ -516,24 +516,24 @@ fn generate_register_types<'a>(regs: impl Iterator<Item = &'a RegisterType>) -> 
     regs.sort_by_key(|e| &e.name);
     let mut tokens = TokenStream::new();
     for reg in regs {
-        if !has_single_32_bit_field(reg) {
+        if !has_single_full_size_field(reg) {
             tokens.extend(generate_register(reg));
         }
     }
     tokens
 }
 
-fn has_single_32_bit_field(t: &RegisterType) -> bool {
+fn has_single_full_size_field(t: &RegisterType) -> bool {
     t.fields.len() == 1
         && t.fields[0].enum_type.is_none()
         && t.fields[0].position == 0
-        && t.fields[0].width == 32
+        && t.fields[0].width == t.width as u8
 }
 
 fn read_write_types(t: &RegisterType, options: &OptionsInternal) -> (TokenStream, TokenStream) {
-    // TODO: This should be using #reg_raw_type instead of u32
-    if has_single_32_bit_field(t) {
-        (quote! { u32 }, quote! { u32 })
+    if has_single_full_size_field(t) {
+        let reg_raw_type = format_ident!("{}", t.width.rust_primitive_name());
+        (quote! { #reg_raw_type }, quote! { #reg_raw_type })
     } else {
         if let Some(extern_type) = options.extern_types.get(t) {
             return (

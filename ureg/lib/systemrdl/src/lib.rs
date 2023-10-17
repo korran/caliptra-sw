@@ -185,7 +185,7 @@ fn translate_register(iref: systemrdl::InstanceRef) -> Result<ureg::Register, Er
             .ok_or(Error::OffsetNotDefined)
             .map_err(wrap_err)?,
         default_val: ty.fields.iter().fold(0, |reset, field| {
-            let width_mask = (1 << field.width) - 1;
+            let width_mask = u64::try_from((1u128 << field.width) - 1).unwrap();
             reset | ((field.default_val & width_mask) << field.position)
         }),
         comment: unpad_description(&description),
@@ -249,7 +249,7 @@ pub fn translate_types(scope: systemrdl::ParentScope) -> Result<Vec<Rc<RegisterT
     Ok(result)
 }
 
-fn translate_block(iref: InstanceRef) -> Result<RegisterBlock, Error> {
+pub fn translate_block(iref: InstanceRef) -> Result<RegisterBlock, Error> {
     let wrap_err = |err: Error| Error::BlockError {
         block_name: iref.instance.name.clone(),
         err: Box::new(err),
