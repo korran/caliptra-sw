@@ -16,7 +16,7 @@
 VERILATOR = verilator
 THIS_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 FPGA_RTL_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))../rtl
-CALIPTRA_RTL_DIR := $(realpath $(THIS_DIR)../caliptra-rtl)
+CALIPTRA_RTL_DIR := $(realpath $(THIS_DIR)../../caliptra-rtl)
 
 CFLAGS := -std=c++11 -fno-exceptions -fPIC
 VERILATOR_MAKE_FLAGS = OPT_FAST="-Os"
@@ -27,7 +27,7 @@ VERILATOR_OBJS = out/verilated_threads.o out/verilated.o out/verilated_vcd_c.o
 
 LIB_OBJS = out/caliptra_fpga_sync_verilated.o
 
-export CALIPTRA_ROOT = $(realpath ../caliptra-rtl)
+export CALIPTRA_ROOT = $(realpath ../../caliptra-rtl)
 
 suppress = -Wno-WIDTH -Wno-UNOPTFLAT -Wno-LITENDIAN -Wno-CMPCONST -Wno-MULTIDRIVEN -Wno-UNPACKED
 
@@ -57,6 +57,7 @@ out/Vcaliptra_fpga_sync_verilated.h: ${FPGA_RTL_DIR}/caliptra_fpga_sync_top.sv o
 	  -Wno-fatal `#TODO: Remove this line once RTL warnings are fixed` \
 	  --clk aclk \
 	  $(suppress) \
+	  -f $(CALIPTRA_RTL_DIR)/src/integration/config/caliptra_top_tb.vf \
 	  $(FPGA_RTL_DIR)/axi4lite_intf.sv \
 	  $(FPGA_RTL_DIR)/caliptra_fpga_sync_regs_pkg.sv \
 	  $(FPGA_RTL_DIR)/caliptra_fpga_sync_regs.sv \

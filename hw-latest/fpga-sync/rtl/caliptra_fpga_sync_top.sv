@@ -1,4 +1,9 @@
 
+`default_nettype none
+
+`include "config_defines.svh"
+`include "caliptra_macros.svh"
+
 module caliptra_fpga_sync_top
         import caliptra_fpga_sync_regs_pkg::*;
     (
@@ -109,5 +114,182 @@ module caliptra_fpga_sync_top
 
         hwif_in.counter.counter.next = counter;
     end
+
+
+    import caliptra_top_tb_pkg::*;
+    import soc_ifc_pkg::*;
+
+    logic [`CALIPTRA_IMEM_ADDR_WIDTH-1:0] imem_addr;
+    logic [`CALIPTRA_IMEM_DATA_WIDTH-1:0] imem_rdata;
+    logic imem_cs;
+
+    logic mbox_sram_cs;
+    logic mbox_sram_we;
+    logic [14:0] mbox_sram_addr;
+    logic [MBOX_DATA_AND_ECC_W-1:0] mbox_sram_wdata;
+    logic [MBOX_DATA_AND_ECC_W-1:0] mbox_sram_wdata_bitflip;
+    logic [MBOX_DATA_AND_ECC_W-1:0] mbox_sram_rdata;
+
+    el2_mem_if el2_mem_export ();
+
+    caliptra_top caliptra_top_dut (
+        .cptra_pwrgood              (hwif_out.control.cptra_pwrgood.value),
+        .cptra_rst_b                (hwif_out.control.cptra_rst_b.value),
+        .clk                        (aclk_gated),
+
+        .cptra_obf_key              ({hwif_out.cptra_obf_key[0].val.value,
+                                    hwif_out.cptra_obf_key[1].val.value,
+                                    hwif_out.cptra_obf_key[2].val.value,
+                                    hwif_out.cptra_obf_key[3].val.value}),
+
+        .jtag_tck(1'b0),
+        .jtag_tdi(1'b0),
+        .jtag_tms(1'b0),
+        .jtag_trst_n(1'b0),
+        .jtag_tdo(),
+
+        .PADDR(hwif_out.apb_in0.paddr.value),
+        .PPROT(hwif_out.apb_in1.pprot.value),
+        .PAUSER(hwif_out.apb_in1.pauser.value),
+        .PENABLE(hwif_out.apb_in1.penable.value),
+        .PRDATA(hwif_in.apb_out.pdata.next),
+        .PREADY(hwif_in.apb_out.pready.next),
+        .PSEL(hwif_out.apb_in1.psel.value),
+        .PSLVERR(hwif_in.apb_out.pslverr.next),
+        .PWDATA(hwif_out.apb_in0.pdata.value),
+        .PWRITE(hwif_out.apb_in1.pwrite.value),
+
+        .qspi_clk_o(),
+        .qspi_cs_no(),
+        .qspi_d_i(4'b0),
+        .qspi_d_o(),
+        .qspi_d_en_o(),
+
+        .el2_mem_export(el2_mem_export.veer_sram_src),
+
+        .ready_for_fuses(hwif_in.status.ready_for_fuses.next),
+        .ready_for_fw_push(hwif_in.status.ready_for_fw_push.next),
+        .ready_for_runtime(hwif_in.status.ready_for_runtime.next),
+
+        .mbox_sram_cs(mbox_sram_cs),
+        .mbox_sram_we(mbox_sram_we),
+        .mbox_sram_addr(mbox_sram_addr),
+        .mbox_sram_wdata(mbox_sram_wdata),
+        .mbox_sram_rdata(mbox_sram_rdata),
+
+        .imem_cs(imem_cs),
+        .imem_addr(imem_addr),
+        .imem_rdata(imem_rdata),
+
+        .mailbox_data_avail(),
+        .mailbox_flow_done(),
+        .BootFSM_BrkPoint('x), //FIXME TIE-OFF
+
+        .generic_input_wires(hwif_out.generic_input_wires.val.value), //FIXME TIE-OFF
+        .generic_output_wires(hwif_in.generic_output_wires.val.next),
+
+        .scan_mode(),
+
+        //FIXME: export these
+        .cptra_error_fatal(),
+        .cptra_error_non_fatal(),
+
+        .etrng_req(hwif_in.trng_out.etrng_req.next),
+        .itrng_data(hwif_out.trng_in.itrng_data.value),
+        .itrng_valid(hwif_out.trng_in.itrng_valid.value),
+
+        .security_state({hwif_out.control.ss_debug_locked.value, hwif_out.control.ss_device_lifecycle.value})
+    );
+
+
+    caliptra_veer_sram_export veer_sram_export_inst (
+        .sram_error_injection_mode('0),
+        .el2_mem_export(el2_mem_export.veer_sram_sink)
+    );
+
+    //SRAM for mbox (preload raw data here)
+    caliptra_sram
+    #(
+        .DATA_WIDTH(MBOX_DATA_W),
+        .DEPTH     (MBOX_DEPTH )
+    )
+    dummy_mbox_preloader
+    (
+        .clk_i(aclk_gated),
+
+        .cs_i   (),
+        .we_i   (),
+        .addr_i (),
+        .wdata_i(),
+        .rdata_o()
+    );
+    // Actual Mailbox RAM -- preloaded with data from
+    // dummy_mbox_preloader with ECC bits appended
+    caliptra_sram
+    #(
+        .DATA_WIDTH(MBOX_DATA_AND_ECC_W),
+        .DEPTH     (MBOX_DEPTH         )
+    )
+    mbox_ram1
+    (
+        .clk_i(aclk_gated),
+
+        .cs_i(mbox_sram_cs),
+        .we_i(mbox_sram_we),
+        .addr_i(mbox_sram_addr),
+        .wdata_i(mbox_sram_wdata ^ mbox_sram_wdata_bitflip),
+
+        .rdata_o(mbox_sram_rdata)
+    );
+
+    //SRAM for imem
+    caliptra_sram #(
+        .DEPTH     (`CALIPTRA_IMEM_DEPTH     ), // Depth in WORDS
+        .DATA_WIDTH(`CALIPTRA_IMEM_DATA_WIDTH),
+        .ADDR_WIDTH(`CALIPTRA_IMEM_ADDR_WIDTH)
+    ) imem_inst1 (
+        .clk_i   (aclk_gated),
+
+        .cs_i    (imem_cs),
+        .we_i    (),
+        .addr_i  (imem_addr),
+        .wdata_i (),
+        .rdata_o (imem_rdata                         )
+    );
+
+    // This is used to load the generated ICCM hexfile prior to
+    // running slam_iccm_ram
+    caliptra_sram #(
+        .DEPTH     (16384        ), // 128KiB
+        .DATA_WIDTH(64           ),
+        .ADDR_WIDTH($clog2(16384))
+
+    ) dummy_iccm_preloader (
+        .clk_i   (aclk_gated),
+
+        .cs_i    (        ),
+        .we_i    (        ),
+        .addr_i  (        ),
+        .wdata_i (        ),
+        .rdata_o (        )
+    );
+
+
+    // This is used to load the generated DCCM hexfile prior to
+    // running slam_dccm_ram
+    caliptra_sram #(
+        .DEPTH     (16384        ), // 128KiB
+        .DATA_WIDTH(64           ),
+        .ADDR_WIDTH($clog2(16384))
+
+    ) dummy_dccm_preloader (
+        .clk_i   (),
+
+        .cs_i    (        ),
+        .we_i    (        ),
+        .addr_i  (        ),
+        .wdata_i (        ),
+        .rdata_o (        )
+    );
 
 endmodule
