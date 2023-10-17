@@ -36,6 +36,8 @@ members = [
   "drivers/test-fw/scripts/vector_gen",
   "fmc",
   "fmc/test-fw/test-rt",
+  "hw-latest/fpga-sync/registers",
+  "hw-latest/fpga-sync/registers/bin/generator",
   "hw-latest/fpga-sync/verilated",
   "hw-latest/verilated",
   "hw-model",

@@ -412,6 +412,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "caliptra-fpga-sync-registers"
+version = "0.1.0"
+dependencies = [
+ "ureg",
+]
+
+[[package]]
+name = "caliptra-fpga-sync-registers-generator"
+version = "0.1.0"
+dependencies = [
+ "caliptra-systemrdl",
+ "quote",
+ "ureg-codegen",
+ "ureg-schema",
+ "ureg-systemrdl",
+]
+
+[[package]]
 name = "caliptra-fpga-sync-verilated"
 version = "0.1.0"
 
@@ -1527,9 +1545,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.140"
+version = "0.2.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
+checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
 name = "link-cplusplus"

@@ -49,18 +49,18 @@ addrmap caliptra_fpga_sync_regs {
     } jtag_out;
 
     reg {
-        field { sw=rw; hw=r; } val[64] = 64'b0;
+        field { sw=rw; hw=r; } value[64] = 64'b0;
     } generic_input_wires;
 
     reg {
-        field { sw=r; hw=rw; } val[64] = 64'b0;
+        field { sw=r; hw=rw; } value[64] = 64'b0;
     } generic_output_wires;
 
     reg {
         default sw=rw;
         default hw=r;
 
-        field {} val[64] = 64'b0;
+        field {} value[64] = 64'b0;
     } cptra_obf_key[4];
 
     reg {
