@@ -452,6 +452,7 @@ dependencies = [
  "caliptra-emu-cpu",
  "caliptra-emu-periph",
  "caliptra-emu-types",
+ "caliptra-fpga-sync-registers",
  "caliptra-fpga-sync-verilated",
  "caliptra-hw-model-types",
  "caliptra-registers",

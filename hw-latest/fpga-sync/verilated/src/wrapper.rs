@@ -1,4 +1,8 @@
 
+use std::ffi::CString;
+use std::ffi::NulError;
+use std::ptr::null;
+
 use crate::bindings;
 
 pub use crate::bindings::caliptra_fpga_sync_sig_in as SigIn;
@@ -32,11 +36,10 @@ impl FpgaSyncVerilated {
 
     pub fn total_cycles(&self) -> u64 {
         todo!();
-
     }
 
     pub fn write_rom_image(&mut self, image: &[u8]) {
-        todo!();
+
     }
 
     pub fn eval(&mut self) {
@@ -134,6 +137,24 @@ impl FpgaSyncVerilated {
 
         Ok(())
     }
+
+    /// Starts tracing to VCD file `path`, with SystemVerilog module depth
+    /// `depth`. If tracing was previously started to another file, that file
+    /// will be closed and all new traces will be written to this file.
+    pub fn start_tracing(&mut self, path: &str, depth: i32) -> Result<(), NulError> {
+        unsafe {
+            bindings::caliptra_fpga_sync_verilated_trace(self.v, CString::new(path)?.as_ptr(), depth);
+        }
+        Ok(())
+    }
+
+    /// Stop any tracing that might have been previously started with `start_tracing()`.
+    pub fn stop_tracing(&mut self) {
+        unsafe {
+            bindings::caliptra_fpga_sync_verilated_trace(self.v, null(), 0);
+        }
+    }
+
 }
 
 impl Drop for FpgaSyncVerilated {

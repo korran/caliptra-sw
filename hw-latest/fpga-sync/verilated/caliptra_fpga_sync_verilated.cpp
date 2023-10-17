@@ -24,6 +24,23 @@ void caliptra_fpga_sync_verilated_destroy(struct caliptra_fpga_sync_verilated* m
   delete model;
 }
 
+void caliptra_fpga_sync_verilated_trace(struct caliptra_fpga_sync_verilated* model,
+                              const char* vcd_out_path, int depth) {
+  Verilated::traceEverOn(vcd_out_path ? true : false);
+  if (model->tfp.get()) {
+    model->tfp->close();
+  }
+  model->tfp.reset(NULL);
+
+  if (vcd_out_path) {
+    model->tfp.reset(new VerilatedVcdC());
+
+    model->v.trace(model->tfp.get(), depth);
+    model->tfp->open(vcd_out_path);
+  }
+}
+
+
 
 void caliptra_fpga_sync_verilated_eval(struct caliptra_fpga_sync_verilated* model,
                              const struct caliptra_fpga_sync_sig_in* in,

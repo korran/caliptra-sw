@@ -83,14 +83,58 @@ pub struct ModelFpgaSync {
 }
 
 impl ModelFpgaSync {
-    fn apb_read_u32(&mut self, pauser: u32, addr: u32) -> Result<u32, ()> {
-        self.process_trng();
-        todo!();
+    /// The registers exposed by the test-bench running on the FPGA. Allows for
+    /// full access to all caliptra_top signals, as well as clock control.
+    fn tb(&mut self) -> caliptra_fpga_sync_registers::RegisterBlock<AxiMmio> {
+        unsafe {
+            // This pointer is never dereferenced
+            #[allow(clippy::zero_ptr)]
+            caliptra_fpga_sync_registers::RegisterBlock::new_with_mmio(
+                0 as *mut u64,
+                AxiMmio::new(self)
+            )
+        }
     }
 
-    fn apb_write_u32(&mut self, pauser: u32, addr: u32, value: u32) -> Result<(), ()> {
-        self.process_trng();
-        todo!();
+    fn apb_read_u32(&mut self, pauser: u32, data: u32) -> Result<u32, ()> {
+        self.tb().apb_in0().write(|w| w.paddr(data.into()));
+        self.tb().apb_in1().write(|w| w.psel(true).penable(false).pwrite(false).pauser(pauser.into()).pprot(0));
+        self.v.next_cycle_high(1);
+
+        self.tb().apb_in1().write(|w| w.psel(true).penable(true).pwrite(false).pauser(pauser.into()).pprot(0));
+        
+        loop {
+            self.v.next_cycle_high(1);
+            let apb_out = self.tb().apb_out().read();
+            if apb_out.pready() {
+                self.tb().apb_in1().write(|w| w.psel(false).penable(false));
+                return Ok(apb_out.pdata() as u32);
+            }
+            if apb_out.pslverr() {
+                return Err(());
+            }
+        }
+    }
+
+    fn apb_write_u32(&mut self, pauser: u32, addr: u32, data: u32) -> Result<(), ()> {
+        self.tb().apb_in0().write(|w| w.paddr(addr.into()).pdata(data.into()));
+        self.tb().apb_in1().write(|w| w.psel(true).penable(false).pwrite(true).pauser(pauser.into()).pprot(0));
+        self.v.next_cycle_high(1);
+
+        self.tb().apb_in1().write(|w| w.psel(true).penable(true).pwrite(true).pauser(pauser.into()).pprot(0));
+
+        loop {
+            self.v.next_cycle_high(1);
+            let apb_out = self.tb().apb_out().read();
+            if apb_out.pready() {
+                self.tb().apb_in0().write(|w| w.pdata(0).paddr(addr.into()));
+                self.tb().apb_in1().write(|w| w.psel(false).penable(false));
+                return Ok(());
+            }
+            if apb_out.pslverr() {
+                return Err(());
+            }
+        }
     }
 }
 
@@ -167,19 +211,21 @@ impl crate::HwModel for ModelFpgaSync {
 
         m.tracing_hint(true);
 
-        todo!();
-        //m.v.input.cptra_pwrgood = true;
-        //m.v.next_cycle_high(1);
+        m.tb().control().modify(|w| w.cptra_pwrgood(true));
+        m.v.next_cycle_high(1);
 
-        //m.v.input.cptra_rst_b = true;
-        //m.v.next_cycle_high(1);
+        m.tb().control().modify(|w| w.cptra_rst_b(true));
+        m.v.next_cycle_high(1);
 
-        //while !m.v.output.ready_for_fuses {
-        //    m.v.next_cycle_high(1);
-        //}
+        while !m.tb().status().read().ready_for_fuses() {
+            m.v.next_cycle_high(1);
+        }
         writeln!(m.output().logger(), "ready_for_fuses is high")?;
         Ok(m)
     }
+
+
+
 
     fn apb_bus(&mut self) -> Self::TBus<'_> {
         ApbBus { model: self }
@@ -217,6 +263,16 @@ impl crate::HwModel for ModelFpgaSync {
     }
 
     fn tracing_hint(&mut self, enable: bool) {
+        if self.trace_enabled != enable {
+            self.trace_enabled = enable;
+            if enable {
+                if let Ok(trace_path) = env::var("CPTRA_TRACE_PATH") {
+                    self.v.start_tracing(&trace_path, 99).ok();
+                }
+            } else {
+                self.v.stop_tracing();
+            }
+        }
     }
 
     fn ecc_error_injection(&mut self, mode: ErrorInjectionMode) {
@@ -308,5 +364,70 @@ impl ModelFpgaSync {
         //if self.v.input.itrng_valid {
         //    self.v.input.itrng_valid = false;
         //}
+    }
+}
+
+/// An MMIO implementation that reads and writes to the AXI bus
+pub struct AxiMmio<'a> {
+    model: RefCell<&'a mut ModelFpgaSync>,
+}
+impl<'a> AxiMmio<'a> {
+    pub fn new(model: &'a mut ModelFpgaSync) -> Self {
+        Self {
+            model: RefCell::new(model),
+        }
+    }
+}
+impl<'a> ureg::Mmio for AxiMmio<'a> {
+    /// Loads from address `src` on the bus and returns the value.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the bus faults.
+    ///
+    /// # Safety
+    ///
+    /// As the pointer isn't read from, this Mmio implementation isn't actually
+    /// unsafe for POD types like u8/u16/u32/u64.
+    unsafe fn read_volatile<T: Clone + Copy + Sized>(&self, src: *const T) -> T {
+        let val_u64 = self.model.borrow_mut().v.axi_read(src as usize as u32).unwrap();
+        
+        match std::mem::size_of::<T>() {
+            1 => std::mem::transmute_copy::<u8, T>(&(val_u64 as u8)),
+            2 => std::mem::transmute_copy::<u16, T>(&(val_u64 as u16)),
+            4 => std::mem::transmute_copy::<u32, T>(&(val_u64 as u32)),
+            8 => std::mem::transmute_copy::<u64, T>(&val_u64),
+            _ => panic!("Unsupported read size"),
+        }
+    }
+}
+
+unsafe fn transmute_to_u64<T>(src: &T) -> u64 {
+    match std::mem::size_of::<T>() {
+        1 => std::mem::transmute_copy::<T, u8>(src).into(),
+        2 => std::mem::transmute_copy::<T, u16>(src).into(),
+        4 => std::mem::transmute_copy::<T, u32>(src).into(),
+        8 => std::mem::transmute_copy::<T, u64>(src),
+        _ => panic!("Unsupported write size"),
+    }
+}
+
+impl<'a> ureg::MmioMut for AxiMmio<'a> {
+    /// Stores `src` to address `dst` on the bus.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the bus faults.
+    ///
+    /// # Safety
+    ///
+    /// As the pointer isn't written to, this Mmio implementation isn't actually
+    /// unsafe for POD types like u8/u16/u32/u64.
+    unsafe fn write_volatile<T: Clone + Copy>(&self, dst: *mut T, src: T) {
+        self.model
+            .borrow_mut()
+            .v
+            .axi_write(dst as usize as u32, transmute_to_u64(&src))
+            .unwrap()
     }
 }
