@@ -99,12 +99,12 @@ impl ModelFpgaSync {
     fn apb_read_u32(&mut self, pauser: u32, data: u32) -> Result<u32, ()> {
         self.tb().apb_in0().write(|w| w.paddr(data.into()));
         self.tb().apb_in1().write(|w| w.psel(true).penable(false).pwrite(false).pauser(pauser.into()).pprot(0));
-        self.v.next_cycle_high(1);
+        self.step();
 
         self.tb().apb_in1().write(|w| w.psel(true).penable(true).pwrite(false).pauser(pauser.into()).pprot(0));
         
         loop {
-            self.v.next_cycle_high(1);
+            self.step();
             let apb_out = self.tb().apb_out().read();
             if apb_out.pready() {
                 self.tb().apb_in1().write(|w| w.psel(false).penable(false));
@@ -119,12 +119,12 @@ impl ModelFpgaSync {
     fn apb_write_u32(&mut self, pauser: u32, addr: u32, data: u32) -> Result<(), ()> {
         self.tb().apb_in0().write(|w| w.paddr(addr.into()).pdata(data.into()));
         self.tb().apb_in1().write(|w| w.psel(true).penable(false).pwrite(true).pauser(pauser.into()).pprot(0));
-        self.v.next_cycle_high(1);
+        self.step();
 
         self.tb().apb_in1().write(|w| w.psel(true).penable(true).pwrite(true).pauser(pauser.into()).pprot(0));
 
         loop {
-            self.v.next_cycle_high(1);
+            self.step();
             let apb_out = self.tb().apb_out().read();
             if apb_out.pready() {
                 self.tb().apb_in0().write(|w| w.pdata(0).paddr(addr.into()));
@@ -212,13 +212,13 @@ impl crate::HwModel for ModelFpgaSync {
         m.tracing_hint(true);
 
         m.tb().control().modify(|w| w.cptra_pwrgood(true));
-        m.v.next_cycle_high(1);
+        m.step();
 
         m.tb().control().modify(|w| w.cptra_rst_b(true));
-        m.v.next_cycle_high(1);
+        m.step();
 
         while !m.tb().status().read().ready_for_fuses() {
-            m.v.next_cycle_high(1);
+            m.step();
         }
         writeln!(m.output().logger(), "ready_for_fuses is high")?;
         Ok(m)
@@ -232,9 +232,7 @@ impl crate::HwModel for ModelFpgaSync {
     }
 
     fn step(&mut self) {
-        self.process_trng_start();
-        self.v.next_cycle_high(1);
-        self.process_trng_end();
+        self.tb().clock_control().write(|w| w.cycle_count(1).go(true));
     }
 
     fn output(&mut self) -> &mut crate::Output {
@@ -243,18 +241,14 @@ impl crate::HwModel for ModelFpgaSync {
     }
 
     fn warm_reset(&mut self) {
-        todo!();
         // Toggle reset pin
-        //self.v.input.cptra_rst_b = false;
-        //self.v.next_cycle_high(1);
-
-        //self.v.input.cptra_rst_b = true;
-        //self.v.next_cycle_high(1);
-
-        //// Wait for ready_for_fuses
-        //while !self.v.output.ready_for_fuses {
-        //    self.v.next_cycle_high(1);
-        //}
+        self.tb().control().modify(|w| w.cptra_rst_b(false));
+        self.step();
+        self.tb().control().modify(|w| w.cptra_rst_b(true));
+        self.step();
+        while !self.tb().status().read().ready_for_fuses() {
+            self.step();
+        }
     }
 
     fn ready_for_fw(&self) -> bool {
@@ -292,23 +286,24 @@ impl crate::HwModel for ModelFpgaSync {
 }
 impl ModelFpgaSync {
     fn process_trng(&mut self) {
-        if self.process_trng_start() {
-            self.v.next_cycle_high(1);
-            self.process_trng_end();
-        }
+        //if self.process_trng_start() {
+        //    self.v.next_cycle_high(1);
+        //    self.process_trng_end();
+        //}
     }
     fn process_trng_start(&mut self) -> bool {
-        match self.trng_mode {
-            TrngMode::Internal => self.process_itrng_start(),
-            TrngMode::External => self.process_etrng_start(),
-        }
+        todo!();
+        //match self.trng_mode {
+        //    TrngMode::Internal => self.process_itrng_start(),
+        //    TrngMode::External => self.process_etrng_start(),
+        //}
     }
 
     fn process_trng_end(&mut self) {
-        match self.trng_mode {
-            TrngMode::Internal => self.process_itrng_end(),
-            TrngMode::External => {}
-        }
+        //match self.trng_mode {
+        //    TrngMode::Internal => self.process_itrng_end(),
+        //    TrngMode::External => {}
+        //}
     }
 
     // Returns true if process_trng_end must be called after a clock cycle
