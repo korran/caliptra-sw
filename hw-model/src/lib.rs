@@ -480,7 +480,7 @@ pub trait HwModel {
     /// Returns true if the microcontroller has signalled that it is ready for
     /// firmware to be written to the mailbox. For RTL implementations, this
     /// should come via a caliptra_top wire rather than an APB register.
-    fn ready_for_fw(&self) -> bool;
+    fn ready_for_fw(&mut self) -> bool;
 
     /// Initializes the fuse values and locks them in until the next reset. This
     /// function can only be called during early boot, shortly after the model
@@ -546,22 +546,30 @@ pub trait HwModel {
         &mut self,
         mut w: impl std::io::Write,
     ) -> std::io::Result<()> {
-        loop {
-            if !self.output().peek().is_empty() {
-                w.write_all(self.output().take(usize::MAX).as_bytes())?;
+        let mut result = Ok(());
+        self.bkpt_step_until(|m| {
+            if !m.output().peek().is_empty() {
+                result = w.write_all(m.output().take(usize::MAX).as_bytes());
+                if result.is_err() {
+                    return true;
+                }
             }
-            match self.output().exit_status() {
-                Some(ExitStatus::Passed) => return Ok(()),
+            match m.output().exit_status() {
+                Some(ExitStatus::Passed) => {
+                    result = Ok(());
+                    true
+                }
                 Some(ExitStatus::Failed) => {
-                    return Err(std::io::Error::new(
+                    result = Err(std::io::Error::new(
                         ErrorKind::Other,
                         "firmware exited with failure",
-                    ))
+                    ));
+                    true
                 }
-                None => {}
+                None => false,
             }
-            self.step();
-        }
+        });
+        result
     }
 
     /// Execute until the output ends with `expected_output`
@@ -586,7 +594,7 @@ pub trait HwModel {
     // before this function was called.
     fn step_until_output_contains(&mut self, substr: &str) -> Result<(), Box<dyn Error>> {
         self.output().set_search_term(substr);
-        self.step_until(|m| m.output().search_matched());
+        self.bkpt_step_until(|m| m.output().search_matched());
         Ok(())
     }
 
@@ -755,10 +763,7 @@ pub trait HwModel {
 
     /// Wait for the response to a previous call to `start_mailbox_execute()`.
     fn finish_mailbox_execute(&mut self) -> std::result::Result<Option<Vec<u8>>, ModelError> {
-        // Wait for the microcontroller to finish executing
-        while self.soc_mbox().status().read().status().cmd_busy() {
-            self.step();
-        }
+        self.bkpt_step_until(|m| !m.soc_mbox().status().read().status().cmd_busy());
         let status = self.soc_mbox().status().read().status();
         if status.cmd_failure() {
             writeln!(self.output().logger(), ">>> mbox cmd response: failed").unwrap();

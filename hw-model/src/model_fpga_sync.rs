@@ -5,6 +5,7 @@ use crate::EtrngResponse;
 use crate::{HwModel, TrngMode};
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
+use caliptra_fpga_sync_registers::regs::ClockControlReadVal;
 use caliptra_fpga_sync_verilated::{FpgaSyncVerilated, AxiErr};
 use caliptra_hw_model_types::ErrorInjectionMode;
 use std::cell::{Cell, RefCell};
@@ -71,7 +72,7 @@ pub struct ModelFpgaSync {
     trng_mode: TrngMode,
 
     itrng_nibbles: Box<dyn Iterator<Item = u8>>,
-    itrng_delay_remaining: u32,
+    itrng_response_time: Option<u64>,
 
     etrng_responses: Box<dyn Iterator<Item = EtrngResponse>>,
     etrng_response: Option<AbsoluteEtrngResponse>,
@@ -85,13 +86,13 @@ pub struct ModelFpgaSync {
 impl ModelFpgaSync {
     /// The registers exposed by the test-bench running on the FPGA. Allows for
     /// full access to all caliptra_top signals, as well as clock control.
-    fn tb(&mut self) -> caliptra_fpga_sync_registers::RegisterBlock<AxiMmio> {
+    fn tb(&mut self) -> caliptra_fpga_sync_registers::RegisterBlock<AxiMmioMut> {
         unsafe {
             // This pointer is never dereferenced
             #[allow(clippy::zero_ptr)]
             caliptra_fpga_sync_registers::RegisterBlock::new_with_mmio(
                 0 as *mut u64,
-                AxiMmio::new(self)
+                AxiMmioMut::new(self)
             )
         }
     }
@@ -153,6 +154,40 @@ impl ModelFpgaSync {
 
         Ok(())
     }
+
+    fn handle_breakpoints(&mut self, cc: ClockControlReadVal) -> u64 {
+        let mut max_run_cycles = 500_000;
+        if cc.bkpt_generic_output_wires() {
+            let ch = (self.tb().generic_output_wires().read() & 0xff) as u8;
+            let now = self.tb().counter().read();
+            self.output.sink().set_now(now);
+            self.output.sink().push_uart_char(ch);
+
+            // Clear this breakpoint
+            self.tb().clock_control().write(|w| w.bkpt_generic_output_wires(true));
+        }
+        if cc.bkpt_mailbox_data_avail() {
+            // clear the breakpoint
+            self.tb().clock_control().write(|w| w.bkpt_mailbox_data_avail(true));
+        }
+        if cc.bkpt_mailbox_flow_done() {
+            // clear the breakpoint
+            self.tb().clock_control().write(|w| w.bkpt_mailbox_flow_done(true));
+        }
+        if cc.bkpt_etrng_req() {
+            // clear the breakpoint
+            self.tb().clock_control().write(|w| w.bkpt_etrng_req(true));
+        }
+        self.process_trng();
+        let now = self.tb().counter().read();
+        if let Some(itrng_time) = self.itrng_response_time {
+            max_run_cycles = u64::min(max_run_cycles, itrng_time.wrapping_sub(now));
+        }
+        if let Some(etrng_response) = &self.etrng_response {
+            max_run_cycles = u64::min(max_run_cycles, etrng_response.time.wrapping_sub(now));
+        }
+        max_run_cycles
+    }
 }
 
 impl crate::HwModel for ModelFpgaSync {
@@ -165,23 +200,6 @@ impl crate::HwModel for ModelFpgaSync {
         let output = Output::new(params.log_writer);
 
         let output_sink = output.sink().clone();
-
-        let generic_output_wires_changed_cb = {
-            let prev_uout = Cell::new(None);
-            Box::new(move |v: &FpgaSyncVerilated, out_wires: u64| {
-                if Some(out_wires & 0x1ff) != prev_uout.get() {
-                    // bit #8 toggles whenever the Uart driver writes a byte, so
-                    // by including it in the comparison we can tell when the
-                    // same character has been written a second time
-                    if prev_uout.get().is_some() {
-                        // Don't print out a character for the initial state
-                        output_sink.set_now(v.total_cycles());
-                        output_sink.push_uart_char((out_wires & 0xff) as u8);
-                    }
-                    prev_uout.set(Some(out_wires & 0x1ff));
-                }
-            })
-        };
 
         let log = Rc::new(RefCell::new(BusLogger::new(NullBus())));
         let bus_log = log.clone();
@@ -214,7 +232,7 @@ impl crate::HwModel for ModelFpgaSync {
             trng_mode: desired_trng_mode,
 
             itrng_nibbles: params.itrng_nibbles,
-            itrng_delay_remaining: TRNG_DELAY,
+            itrng_response_time: None,
 
             etrng_responses: params.etrng_responses,
             etrng_response: None,
@@ -256,23 +274,21 @@ impl crate::HwModel for ModelFpgaSync {
     }
 
     fn bkpt_step_until(&mut self, mut predicate: impl FnMut(&mut Self) -> bool) {
-        println!("bkpt_step_until");
+        if predicate(self) {
+            return;
+        }
         loop {
-            if predicate(self) {
-                return;
-            }
             let mut cc = self.tb().clock_control().read();
             while cc.go() {
                 cc = self.tb().clock_control().read()
             }
-            if cc.bkpt_generic_output_wires() {
-                let ch = (self.tb().generic_output_wires().read() & 0xff) as u8;
-                self.output.sink().push_uart_char(ch);
 
-                // Clear this breakpoint
-                self.tb().clock_control().write(|w| w.bkpt_generic_output_wires(true));
+            let max_run_cycles = self.handle_breakpoints(cc);
+
+            if predicate(self) {
+                return;
             }
-            self.tb().clock_control().write(|w| w.cycle_count(500000).go(true));
+            self.tb().clock_control().write(|w| w.cycle_count(max_run_cycles).go(true));
         }
     }
 
@@ -283,10 +299,11 @@ impl crate::HwModel for ModelFpgaSync {
 
     fn step(&mut self) {
         self.tb().clock_control().write(|w| w.cycle_count(1).go(true));
+        let cc = self.tb().clock_control().read();
+        self.handle_breakpoints(cc);
     }
 
     fn output(&mut self) -> &mut crate::Output {
-        self.output.sink().set_now(self.v.total_cycles());
         &mut self.output
     }
 
@@ -301,9 +318,8 @@ impl crate::HwModel for ModelFpgaSync {
         }
     }
 
-    fn ready_for_fw(&self) -> bool {
-        todo!();
-        //self.v.output.ready_for_fw_push
+    fn ready_for_fw(&mut self) -> bool {
+        self.tb().status().read().ready_for_fw_push()
     }
 
     fn tracing_hint(&mut self, enable: bool) {
@@ -336,94 +352,93 @@ impl crate::HwModel for ModelFpgaSync {
 }
 impl ModelFpgaSync {
     fn process_trng(&mut self) {
-        //if self.process_trng_start() {
-        //    self.v.next_cycle_high(1);
-        //    self.process_trng_end();
-        //}
+        if self.process_trng_start() {
+            self.tb().clock_control().write(|w| w.cycle_count(1).go(true));
+            self.process_trng_end();
+        }
     }
     fn process_trng_start(&mut self) -> bool {
-        todo!();
-        //match self.trng_mode {
-        //    TrngMode::Internal => self.process_itrng_start(),
-        //    TrngMode::External => self.process_etrng_start(),
-        //}
+        match self.trng_mode {
+            TrngMode::Internal => self.process_itrng_start(),
+            TrngMode::External => self.process_etrng_start(),
+        }
     }
 
     fn process_trng_end(&mut self) {
-        //match self.trng_mode {
-        //    TrngMode::Internal => self.process_itrng_end(),
-        //    TrngMode::External => {}
-        //}
+        match self.trng_mode {
+            TrngMode::Internal => self.process_itrng_end(),
+            TrngMode::External => {}
+        }
     }
 
     // Returns true if process_trng_end must be called after a clock cycle
     fn process_etrng_start(&mut self) -> bool {
-        todo!();
-        //if self.etrng_waiting_for_req_to_clear && !self.v.output.etrng_req {
-        //    self.etrng_waiting_for_req_to_clear = false;
-        //}
-        //if self.v.output.etrng_req && !self.etrng_waiting_for_req_to_clear {
-        //    if self.etrng_response.is_none() {
-        //        if let Some(response) = self.etrng_responses.next() {
-        //            self.etrng_response = Some(AbsoluteEtrngResponse {
-        //                time: self.v.total_cycles() + u64::from(response.delay),
-        //                data: response.data,
-        //            });
-        //        }
-        //    }
-        //    if let Some(etrng_response) = &mut self.etrng_response {
-        //        if self.v.total_cycles().wrapping_sub(etrng_response.time) < 0x8000_0000_0000_0000 {
-        //            self.etrng_waiting_for_req_to_clear = true;
-        //            let etrng_response = self.etrng_response.take().unwrap();
-        //            self.soc_ifc_trng()
-        //                .cptra_trng_data()
-        //                .write(&etrng_response.data);
-        //            self.soc_ifc_trng()
-        //                .cptra_trng_status()
-        //                .write(|w| w.data_wr_done(true));
-        //        }
-        //    }
-        //}
+        let etrng_req = self.tb().trng_out().read().etrng_req();
+        if self.etrng_waiting_for_req_to_clear && !etrng_req {
+            self.etrng_waiting_for_req_to_clear = false;
+        }
+        if etrng_req && !self.etrng_waiting_for_req_to_clear {
+            if self.etrng_response.is_none() {
+                if let Some(response) = self.etrng_responses.next() {
+                    self.etrng_response = Some(AbsoluteEtrngResponse {
+                        time: self.tb().counter().read() + u64::from(response.delay),
+                        data: response.data,
+                    });
+                }
+            }
+            if let Some(etrng_response) = &mut self.etrng_response {
+                let etrng_response_time = etrng_response.time;
+                if self.tb().counter().read().wrapping_sub(etrng_response_time) < 0x8000_0000_0000_0000 {
+                    self.etrng_waiting_for_req_to_clear = true;
+                    let etrng_response = self.etrng_response.take().unwrap();
+                    self.soc_ifc_trng()
+                        .cptra_trng_data()
+                        .write(&etrng_response.data);
+                    self.soc_ifc_trng()
+                        .cptra_trng_status()
+                        .write(|w| w.data_wr_done(true));
+                }
+            }
+        }
         false
     }
     // Returns true if process_trng_end must be called after a clock cycle
     fn process_itrng_start(&mut self) -> bool {
-        todo!();
-        //if self.v.output.etrng_req {
-        //    if self.itrng_delay_remaining == 0 {
-        //        if let Some(val) = self.itrng_nibbles.next() {
-        //            self.v.input.itrng_valid = true;
-        //            self.v.input.itrng_data = val & 0xf;
-        //        }
-        //        self.itrng_delay_remaining = TRNG_DELAY;
-        //    } else {
-        //        self.itrng_delay_remaining -= 1;
-        //    }
-        //    self.v.input.itrng_valid
-        //} else {
-        //    false
-        //}
+        match self.itrng_response_time {
+            Some(itrng_response_time) => {
+                let now = self.tb().counter().read();
+                if now.wrapping_sub(itrng_response_time) < 0x8000_0000_0000_0000 {
+                    if let Some(val) = self.itrng_nibbles.next() {
+                        self.tb().trng_in().write(|w| w.itrng_data((val & 0xf).into()).itrng_valid(true));
+                        return true;
+                    }
+                }
+            },
+            None => {
+                if self.tb().trng_out().read().etrng_req() {
+                    self.itrng_response_time = Some(self.tb().counter().read());
+                }
+            }
+        }
+        false
     }
     fn process_itrng_end(&mut self) {
-        todo!();
-        //if self.v.input.itrng_valid {
-        //    self.v.input.itrng_valid = false;
-        //}
+        self.tb().trng_in().write(|w| w.itrng_valid(true));
     }
 }
 
 /// An MMIO implementation that reads and writes to the AXI bus
-pub struct AxiMmio<'a> {
+pub struct AxiMmioMut<'a> {
     model: RefCell<&'a mut ModelFpgaSync>,
 }
-impl<'a> AxiMmio<'a> {
+impl<'a> AxiMmioMut<'a> {
     pub fn new(model: &'a mut ModelFpgaSync) -> Self {
         Self {
             model: RefCell::new(model),
         }
     }
 }
-impl<'a> ureg::Mmio for AxiMmio<'a> {
+impl<'a> ureg::Mmio for AxiMmioMut<'a> {
     /// Loads from address `src` on the bus and returns the value.
     ///
     /// # Panics
@@ -457,7 +472,7 @@ unsafe fn transmute_to_u64<T>(src: &T) -> u64 {
     }
 }
 
-impl<'a> ureg::MmioMut for AxiMmio<'a> {
+impl<'a> ureg::MmioMut for AxiMmioMut<'a> {
     /// Stores `src` to address `dst` on the bus.
     ///
     /// # Panics

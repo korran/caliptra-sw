@@ -106,9 +106,23 @@ module caliptra_fpga_sync_top
     reg [63:0] generic_output_wires_prev;
     wire [63:0] generic_output_wires;
     assign hwif_in.generic_output_wires.value.next = generic_output_wires;
-
     wire bkpt_generic_output_wires = generic_output_wires_prev != generic_output_wires && !hwif_out.clock_control.bkpt_generic_output_wires.value;
     assign hwif_in.clock_control.bkpt_generic_output_wires.next = hwif_out.clock_control.bkpt_generic_output_wires.value | bkpt_generic_output_wires;
+
+    wire mailbox_data_avail;
+    assign hwif_in.status.mailbox_data_avail.next = mailbox_data_avail;
+    wire bkpt_mailbox_data_avail = mailbox_data_avail && !hwif_out.clock_control.bkpt_mailbox_data_avail.value;
+    assign hwif_in.clock_control.bkpt_mailbox_data_avail.next = hwif_out.clock_control.bkpt_mailbox_data_avail.value | bkpt_mailbox_data_avail;
+
+    wire mailbox_flow_done;
+    assign hwif_in.status.mailbox_flow_done.next = mailbox_flow_done;
+    wire bkpt_mailbox_flow_done = mailbox_flow_done && !hwif_out.clock_control.bkpt_mailbox_flow_done.value;
+    assign hwif_in.clock_control.bkpt_mailbox_flow_done.next = hwif_out.clock_control.bkpt_mailbox_flow_done.value | bkpt_mailbox_flow_done;
+
+    wire etrng_req;
+    assign hwif_in.trng_out.etrng_req.next = etrng_req;
+    wire bkpt_etrng_req = etrng_req && !hwif_out.clock_control.bkpt_etrng_req.value;
+    assign hwif_in.clock_control.bkpt_etrng_req.next = hwif_out.clock_control.bkpt_etrng_req.value | bkpt_etrng_req;
 
     always @ (negedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
@@ -121,7 +135,7 @@ module caliptra_fpga_sync_top
                 aclk_gated_en <= 1'b1;
             end
             else if (aclk_gated_cycle_count > 0) begin
-                if (bkpt_generic_output_wires) 
+                if (bkpt_generic_output_wires || bkpt_mailbox_data_avail || bkpt_mailbox_flow_done || bkpt_etrng_req) 
                     aclk_gated_en <= 0;
                 else 
                     aclk_gated_cycle_count <= aclk_gated_cycle_count - 1;
@@ -194,8 +208,8 @@ module caliptra_fpga_sync_top
         .imem_addr(imem_addr),
         .imem_rdata(imem_rdata),
 
-        .mailbox_data_avail(),
-        .mailbox_flow_done(),
+        .mailbox_data_avail(mailbox_data_avail),
+        .mailbox_flow_done(mailbox_flow_done),
         .BootFSM_BrkPoint('x), //FIXME TIE-OFF
 
         .generic_input_wires(hwif_out.generic_input_wires.value.value), //FIXME TIE-OFF
@@ -207,7 +221,7 @@ module caliptra_fpga_sync_top
         .cptra_error_fatal(),
         .cptra_error_non_fatal(),
 
-        .etrng_req(hwif_in.trng_out.etrng_req.next),
+        .etrng_req(etrng_req),
         .itrng_data(hwif_out.trng_in.itrng_data.value),
         .itrng_valid(hwif_out.trng_in.itrng_valid.value),
 

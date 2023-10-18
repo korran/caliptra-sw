@@ -42,10 +42,6 @@ impl FpgaSyncVerilated {
         result
     }
 
-    pub fn total_cycles(&self) -> u64 {
-        0
-    }
-
     pub fn eval(&mut self) {
         unsafe { bindings::caliptra_fpga_sync_verilated_eval(self.v, &self.input, &mut self.output) }
     }

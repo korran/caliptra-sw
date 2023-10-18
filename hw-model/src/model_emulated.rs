@@ -138,7 +138,7 @@ impl crate::HwModel for ModelEmulated {
         Ok(m)
     }
 
-    fn ready_for_fw(&self) -> bool {
+    fn ready_for_fw(&mut self) -> bool {
         self.ready_for_fw.get()
     }
     fn apb_bus(&mut self) -> Self::TBus<'_> {
