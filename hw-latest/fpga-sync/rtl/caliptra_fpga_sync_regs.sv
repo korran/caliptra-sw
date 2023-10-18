@@ -459,6 +459,22 @@ module caliptra_fpga_sync_regs (
                 logic next;
                 logic load_next;
             } go;
+            struct {
+                logic next;
+                logic load_next;
+            } bkpt_generic_output_wires;
+            struct {
+                logic next;
+                logic load_next;
+            } bkpt_mailbox_data_avail;
+            struct {
+                logic next;
+                logic load_next;
+            } bkpt_mailbox_flow_done;
+            struct {
+                logic next;
+                logic load_next;
+            } bkpt_etrng_req;
         } clock_control;
         struct {
             struct {
@@ -603,6 +619,18 @@ module caliptra_fpga_sync_regs (
             struct {
                 logic value;
             } go;
+            struct {
+                logic value;
+            } bkpt_generic_output_wires;
+            struct {
+                logic value;
+            } bkpt_mailbox_data_avail;
+            struct {
+                logic value;
+            } bkpt_mailbox_flow_done;
+            struct {
+                logic value;
+            } bkpt_etrng_req;
         } clock_control;
         struct {
             struct {
@@ -1284,11 +1312,11 @@ module caliptra_fpga_sync_regs (
     always_comb begin
         automatic logic [0:0] next_c = field_storage.clock_control.go.value;
         automatic logic load_next_c = '0;
-        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.clock_control.go.value & ~decoded_wr_biten[32:32]) | (decoded_wr_data[32:32] & decoded_wr_biten[32:32]);
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.clock_control.go.value | (decoded_wr_data[32:32] & decoded_wr_biten[32:32]);
             load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.go.next;
             load_next_c = '1;
         end
         field_combo.clock_control.go.next = next_c;
@@ -1302,6 +1330,94 @@ module caliptra_fpga_sync_regs (
         end
     end
     assign hwif_out.clock_control.go.value = field_storage.clock_control.go.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.bkpt_generic_output_wires
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.bkpt_generic_output_wires.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.clock_control.bkpt_generic_output_wires.value & ~(decoded_wr_data[33:33] & decoded_wr_biten[33:33]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.bkpt_generic_output_wires.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.bkpt_generic_output_wires.next = next_c;
+        field_combo.clock_control.bkpt_generic_output_wires.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.bkpt_generic_output_wires.value <= 1'h0;
+        end else if(field_combo.clock_control.bkpt_generic_output_wires.load_next) begin
+            field_storage.clock_control.bkpt_generic_output_wires.value <= field_combo.clock_control.bkpt_generic_output_wires.next;
+        end
+    end
+    assign hwif_out.clock_control.bkpt_generic_output_wires.value = field_storage.clock_control.bkpt_generic_output_wires.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.bkpt_mailbox_data_avail
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.bkpt_mailbox_data_avail.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.clock_control.bkpt_mailbox_data_avail.value & ~(decoded_wr_data[34:34] & decoded_wr_biten[34:34]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.bkpt_mailbox_data_avail.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.bkpt_mailbox_data_avail.next = next_c;
+        field_combo.clock_control.bkpt_mailbox_data_avail.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.bkpt_mailbox_data_avail.value <= 1'h0;
+        end else if(field_combo.clock_control.bkpt_mailbox_data_avail.load_next) begin
+            field_storage.clock_control.bkpt_mailbox_data_avail.value <= field_combo.clock_control.bkpt_mailbox_data_avail.next;
+        end
+    end
+    assign hwif_out.clock_control.bkpt_mailbox_data_avail.value = field_storage.clock_control.bkpt_mailbox_data_avail.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.bkpt_mailbox_flow_done
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.bkpt_mailbox_flow_done.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.clock_control.bkpt_mailbox_flow_done.value & ~(decoded_wr_data[35:35] & decoded_wr_biten[35:35]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.bkpt_mailbox_flow_done.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.bkpt_mailbox_flow_done.next = next_c;
+        field_combo.clock_control.bkpt_mailbox_flow_done.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.bkpt_mailbox_flow_done.value <= 1'h0;
+        end else if(field_combo.clock_control.bkpt_mailbox_flow_done.load_next) begin
+            field_storage.clock_control.bkpt_mailbox_flow_done.value <= field_combo.clock_control.bkpt_mailbox_flow_done.next;
+        end
+    end
+    assign hwif_out.clock_control.bkpt_mailbox_flow_done.value = field_storage.clock_control.bkpt_mailbox_flow_done.value;
+    // Field: caliptra_fpga_sync_regs.clock_control.bkpt_etrng_req
+    always_comb begin
+        automatic logic [0:0] next_c = field_storage.clock_control.bkpt_etrng_req.value;
+        automatic logic load_next_c = '0;
+        if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.clock_control.bkpt_etrng_req.value & ~(decoded_wr_data[36:36] & decoded_wr_biten[36:36]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.clock_control.bkpt_etrng_req.next;
+            load_next_c = '1;
+        end
+        field_combo.clock_control.bkpt_etrng_req.next = next_c;
+        field_combo.clock_control.bkpt_etrng_req.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.clock_control.bkpt_etrng_req.value <= 1'h0;
+        end else if(field_combo.clock_control.bkpt_etrng_req.load_next) begin
+            field_storage.clock_control.bkpt_etrng_req.value <= field_combo.clock_control.bkpt_etrng_req.next;
+        end
+    end
+    assign hwif_out.clock_control.bkpt_etrng_req.value = field_storage.clock_control.bkpt_etrng_req.value;
     // Field: caliptra_fpga_sync_regs.counter.counter
     always_comb begin
         automatic logic [63:0] next_c = field_storage.counter.counter.value;
@@ -1407,7 +1523,11 @@ module caliptra_fpga_sync_regs (
     assign readback_array[14][63:1] = '0;
     assign readback_array[15][31:0] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.cycle_count.value : '0;
     assign readback_array[15][32:32] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.go.value : '0;
-    assign readback_array[15][63:33] = '0;
+    assign readback_array[15][33:33] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.bkpt_generic_output_wires.value : '0;
+    assign readback_array[15][34:34] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.bkpt_mailbox_data_avail.value : '0;
+    assign readback_array[15][35:35] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.bkpt_mailbox_flow_done.value : '0;
+    assign readback_array[15][36:36] = (decoded_reg_strb.clock_control && !decoded_req_is_wr) ? field_storage.clock_control.bkpt_etrng_req.value : '0;
+    assign readback_array[15][63:37] = '0;
     assign readback_array[16][63:0] = (decoded_reg_strb.counter && !decoded_req_is_wr) ? field_storage.counter.counter.value : '0;
     assign readback_array[17] = hwif_in.rom_mem.rd_ack ? hwif_in.rom_mem.rd_data : '0;
 

@@ -91,7 +91,32 @@ package caliptra_fpga_sync_regs_pkg;
     } caliptra_fpga_sync_regs__clock_control__cycle_count__in_t;
 
     typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__go__in_t;
+
+    typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_generic_output_wires__in_t;
+
+    typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_data_avail__in_t;
+
+    typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_flow_done__in_t;
+
+    typedef struct {
+        logic next;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_etrng_req__in_t;
+
+    typedef struct {
         caliptra_fpga_sync_regs__clock_control__cycle_count__in_t cycle_count;
+        caliptra_fpga_sync_regs__clock_control__go__in_t go;
+        caliptra_fpga_sync_regs__clock_control__bkpt_generic_output_wires__in_t bkpt_generic_output_wires;
+        caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_data_avail__in_t bkpt_mailbox_data_avail;
+        caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_flow_done__in_t bkpt_mailbox_flow_done;
+        caliptra_fpga_sync_regs__clock_control__bkpt_etrng_req__in_t bkpt_etrng_req;
     } caliptra_fpga_sync_regs__clock_control__in_t;
 
     typedef struct {
@@ -334,8 +359,28 @@ package caliptra_fpga_sync_regs_pkg;
     } caliptra_fpga_sync_regs__clock_control__go__out_t;
 
     typedef struct {
+        logic value;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_generic_output_wires__out_t;
+
+    typedef struct {
+        logic value;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_data_avail__out_t;
+
+    typedef struct {
+        logic value;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_flow_done__out_t;
+
+    typedef struct {
+        logic value;
+    } caliptra_fpga_sync_regs__clock_control__bkpt_etrng_req__out_t;
+
+    typedef struct {
         caliptra_fpga_sync_regs__clock_control__cycle_count__out_t cycle_count;
         caliptra_fpga_sync_regs__clock_control__go__out_t go;
+        caliptra_fpga_sync_regs__clock_control__bkpt_generic_output_wires__out_t bkpt_generic_output_wires;
+        caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_data_avail__out_t bkpt_mailbox_data_avail;
+        caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_flow_done__out_t bkpt_mailbox_flow_done;
+        caliptra_fpga_sync_regs__clock_control__bkpt_etrng_req__out_t bkpt_etrng_req;
     } caliptra_fpga_sync_regs__clock_control__out_t;
 
     typedef struct {

@@ -464,6 +464,13 @@ pub trait HwModel {
         }
     }
 
+    /// Execute until the predicate becomes true. For efficiency, some HwModel
+    /// implementations may override this implementation to only re-run the
+    /// predicate when a "breakpoint" occurs.
+    fn bkpt_step_until(&mut self, mut predicate: impl FnMut(&mut Self) -> bool) {
+        self.step_until(predicate)
+    }
+
     /// Toggle reset pins and wait for ready_for_fuses
     fn warm_reset(&mut self) {
         // sw-emulator lacks support: https://github.com/chipsalliance/caliptra-sw/issues/540
@@ -559,7 +566,7 @@ pub trait HwModel {
 
     /// Execute until the output ends with `expected_output`
     fn step_until_output(&mut self, expected_output: &str) -> Result<(), Box<dyn Error>> {
-        self.step_until(|m| m.output().peek().len() >= expected_output.len());
+        self.bkpt_step_until(|m| m.output().peek().len() >= expected_output.len());
         if &self.output().peek()[..expected_output.len()] != expected_output {
             return Err(format!(
                 "expected output {:?}, was {:?}",

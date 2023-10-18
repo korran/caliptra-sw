@@ -255,7 +255,26 @@ impl crate::HwModel for ModelFpgaSync {
         Ok(m)
     }
 
+    fn bkpt_step_until(&mut self, mut predicate: impl FnMut(&mut Self) -> bool) {
+        println!("bkpt_step_until");
+        loop {
+            if predicate(self) {
+                return;
+            }
+            let mut cc = self.tb().clock_control().read();
+            while cc.go() {
+                cc = self.tb().clock_control().read()
+            }
+            if cc.bkpt_generic_output_wires() {
+                let ch = (self.tb().generic_output_wires().read() & 0xff) as u8;
+                self.output.sink().push_uart_char(ch);
 
+                // Clear this breakpoint
+                self.tb().clock_control().write(|w| w.bkpt_generic_output_wires(true));
+            }
+            self.tb().clock_control().write(|w| w.cycle_count(500000).go(true));
+        }
+    }
 
 
     fn apb_bus(&mut self) -> Self::TBus<'_> {

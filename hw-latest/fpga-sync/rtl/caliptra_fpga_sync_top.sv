@@ -86,35 +86,6 @@ module caliptra_fpga_sync_top
     reg aclk_gated_en;
     assign aclk_gated = aclk_gated_en && aclk;
 
-    always @ (negedge aclk or negedge rstn) begin : reg_update
-        if (!rstn) begin
-            aclk_gated_en <= '0;
-        end
-        else begin
-            if (hwif_out.clock_control.go.value)
-            begin
-                aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value - 1;
-                aclk_gated_en <= 1'b1;
-            end
-            else if (aclk_gated_cycle_count > 0) begin
-                aclk_gated_cycle_count <= aclk_gated_cycle_count - 1;
-            end
-            else begin
-                aclk_gated_en <= '0;
-            end
-        end
-    end
-
-    always @ (posedge aclk_gated) begin : reg_update_gated
-        counter <= counter + 1;
-    end // reg_update_gated
-
-    always_comb begin
-        hwif_in.clock_control.cycle_count.next = aclk_gated_cycle_count;
-
-        hwif_in.counter.counter.next = counter;
-    end
-
 
     import caliptra_top_tb_pkg::*;
     import soc_ifc_pkg::*;
@@ -131,6 +102,48 @@ module caliptra_fpga_sync_top
     logic [MBOX_DATA_AND_ECC_W-1:0] mbox_sram_rdata;
 
     el2_mem_if el2_mem_export ();
+
+    reg [63:0] generic_output_wires_prev;
+    wire [63:0] generic_output_wires;
+    assign hwif_in.generic_output_wires.value.next = generic_output_wires;
+
+    wire bkpt_generic_output_wires = generic_output_wires_prev != generic_output_wires && !hwif_out.clock_control.bkpt_generic_output_wires.value;
+    assign hwif_in.clock_control.bkpt_generic_output_wires.next = hwif_out.clock_control.bkpt_generic_output_wires.value | bkpt_generic_output_wires;
+
+    always @ (negedge aclk or negedge rstn) begin : reg_update
+        if (!rstn) begin
+            aclk_gated_en <= '0;
+        end
+        else begin
+            if (hwif_out.clock_control.go.value && !aclk_gated_en)
+            begin
+                aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value - 1;
+                aclk_gated_en <= 1'b1;
+            end
+            else if (aclk_gated_cycle_count > 0) begin
+                if (bkpt_generic_output_wires) 
+                    aclk_gated_en <= 0;
+                else 
+                    aclk_gated_cycle_count <= aclk_gated_cycle_count - 1;
+            end
+            else begin
+                aclk_gated_en <= '0;
+            end
+        end
+    end
+
+
+
+    always @ (posedge aclk_gated) begin : reg_update_gated
+        counter <= counter + 1;
+        generic_output_wires_prev <= generic_output_wires;
+    end // reg_update_gated
+
+    always_comb begin
+        hwif_in.clock_control.cycle_count.next = aclk_gated_cycle_count;
+
+        hwif_in.counter.counter.next = counter;
+    end
 
     caliptra_top caliptra_top_dut (
         .cptra_pwrgood              (hwif_out.control.cptra_pwrgood.value),
@@ -186,7 +199,7 @@ module caliptra_fpga_sync_top
         .BootFSM_BrkPoint('x), //FIXME TIE-OFF
 
         .generic_input_wires(hwif_out.generic_input_wires.value.value), //FIXME TIE-OFF
-        .generic_output_wires(hwif_in.generic_output_wires.value.next),
+        .generic_output_wires(generic_output_wires),
 
         .scan_mode(),
 
