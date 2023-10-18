@@ -148,7 +148,6 @@ impl ModelFpgaSync {
             // convert into an 8-byte array-ref.
             let data = u64::from_le_bytes(data.try_into().unwrap());
             let addr = 0x1_0000 + u32::try_from(chunk_index*8).unwrap();
-            println!("Writing to address {:x}", addr);
             self.v.axi_write(addr, data)?;
         }
 
@@ -249,10 +248,8 @@ impl crate::HwModel for ModelFpgaSync {
         m.v.next_cycle_high(1);
         m.v.next_cycle_high(1);
 
-        println!("WRiting ROM image");
 
         m.write_rom_image(params.rom)?;
-        println!("Finished writing ROM image");
 
         m.tb().control().modify(|w| w.cptra_pwrgood(true));
         m.step();

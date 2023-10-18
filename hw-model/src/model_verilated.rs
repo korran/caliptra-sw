@@ -261,7 +261,7 @@ impl crate::HwModel for ModelVerilated {
         }
     }
 
-    fn ready_for_fw(&self) -> bool {
+    fn ready_for_fw(&mut self) -> bool {
         self.v.output.ready_for_fw_push
     }
 

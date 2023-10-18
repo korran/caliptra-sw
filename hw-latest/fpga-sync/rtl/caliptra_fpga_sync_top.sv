@@ -124,6 +124,8 @@ module caliptra_fpga_sync_top
     wire bkpt_etrng_req = etrng_req && !hwif_out.clock_control.bkpt_etrng_req.value;
     assign hwif_in.clock_control.bkpt_etrng_req.next = hwif_out.clock_control.bkpt_etrng_req.value | bkpt_etrng_req;
 
+    assign hwif_in.clock_control.go.next = aclk_gated_en;
+
     always @ (negedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
             aclk_gated_en <= '0;
@@ -357,7 +359,7 @@ module caliptra_sram_dual #(
 
     localparam NUM_BYTES = DATA_WIDTH/8 + ((DATA_WIDTH % 8) ? 1 : 0);
 
-    //storage element
+    (* ram_style = "block" *)
     logic [7:0] ram [DEPTH][NUM_BYTES-1:0];
 
     always @(posedge a_clk_i) begin
