@@ -54,6 +54,6 @@ module caliptra_fpga_sync_top_vivado    (
         .bready(bready),
         .bvalid(bvalid),
         .bresp(bresp)
-    )
+    );
 
 endmodule
