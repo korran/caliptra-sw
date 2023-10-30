@@ -143,8 +143,7 @@ set_property file_type SystemVerilog [get_files *.v]
 set_property file_type Verilog [get_files  $fpgaDir/src/caliptra_package_top.v]
 
 # Add include paths
-set_property include_dirs $rtlDir/src/integration/rtl [current_fileset]
-
+set_property include_dirs {$rtlDir/src/integration/rtl $rtlDir/src/libs/rtl}  [current_fileset]
 
 # Set caliptra_package_top as top in case next steps fail so that the top is something useful.
 set_property top caliptra_package_top [current_fileset]

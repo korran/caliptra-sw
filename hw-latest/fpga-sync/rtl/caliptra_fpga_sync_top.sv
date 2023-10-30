@@ -1,5 +1,5 @@
 
-`default_nettype none
+// `default_nettype none
 
 `include "config_defines.svh"
 `include "caliptra_macros.svh"
@@ -7,7 +7,7 @@
 module caliptra_fpga_sync_top
         import caliptra_fpga_sync_regs_pkg::*;
     (
-        input aclk,
+        (* gated_clock = "yes" *) input aclk,
         input rstn,
 
         input arvalid,
@@ -86,8 +86,6 @@ module caliptra_fpga_sync_top
     reg aclk_gated_en;
     assign aclk_gated = aclk_gated_en && aclk;
 
-
-    import caliptra_top_tb_pkg::*;
     import soc_ifc_pkg::*;
 
     logic [`CALIPTRA_IMEM_ADDR_WIDTH-1:0] imem_addr;
@@ -230,45 +228,34 @@ module caliptra_fpga_sync_top
         .security_state({hwif_out.control.ss_debug_locked.value, hwif_out.control.ss_device_lifecycle.value})
     );
 
-
     caliptra_veer_sram_export veer_sram_export_inst (
-        .sram_error_injection_mode('0),
         .el2_mem_export(el2_mem_export.veer_sram_sink)
     );
 
-    //SRAM for mbox (preload raw data here)
-    caliptra_sram
-    #(
-        .DATA_WIDTH(MBOX_DATA_W),
-        .DEPTH     (MBOX_DEPTH )
-    )
-    dummy_mbox_preloader
-    (
-        .clk_i(aclk_gated),
-
-        .cs_i   (),
-        .we_i   (),
-        .addr_i (),
-        .wdata_i(),
-        .rdata_o()
-    );
-    // Actual Mailbox RAM -- preloaded with data from
-    // dummy_mbox_preloader with ECC bits appended
-    caliptra_sram
+    caliptra_sram_dual
     #(
         .DATA_WIDTH(MBOX_DATA_AND_ECC_W),
         .DEPTH     (MBOX_DEPTH         )
     )
     mbox_ram1
     (
-        .clk_i(aclk_gated),
+        .a_clk_i(aclk_gated),
 
-        .cs_i(mbox_sram_cs),
-        .we_i(mbox_sram_we),
-        .addr_i(mbox_sram_addr),
-        .wdata_i(mbox_sram_wdata ^ mbox_sram_wdata_bitflip),
+        .a_cs_i(mbox_sram_cs),
+        .a_we_i(mbox_sram_we),
+        .a_addr_i(mbox_sram_addr),
+        .a_wdata_i(mbox_sram_wdata),
 
-        .rdata_o(mbox_sram_rdata)
+        .a_rdata_o(mbox_sram_rdata),
+
+        .b_clk_i('0),
+
+        .b_cs_i('0),
+        .b_we_i('0),
+        .b_addr_i('0),
+        .b_wdata_i('0),
+
+        .b_rdata_o()
     );
 
     assign hwif_in.rom_mem.rd_ack = hwif_out.rom_mem.req && !hwif_out.rom_mem.req_is_wr;
@@ -293,41 +280,6 @@ module caliptra_fpga_sync_top
         .b_addr_i  (hwif_out.rom_mem.addr[15:3]),
         .b_wdata_i (hwif_out.rom_mem.wr_data),
         .b_rdata_o (hwif_in.rom_mem.rd_data)
-    );
-
-    // This is used to load the generated ICCM hexfile prior to
-    // running slam_iccm_ram
-    caliptra_sram #(
-        .DEPTH     (16384        ), // 128KiB
-        .DATA_WIDTH(64           ),
-        .ADDR_WIDTH($clog2(16384))
-
-    ) dummy_iccm_preloader (
-        .clk_i   (aclk_gated),
-
-        .cs_i    (        ),
-        .we_i    (        ),
-        .addr_i  (        ),
-        .wdata_i (        ),
-        .rdata_o (        )
-    );
-
-
-    // This is used to load the generated DCCM hexfile prior to
-    // running slam_dccm_ram
-    caliptra_sram #(
-        .DEPTH     (16384        ), // 128KiB
-        .DATA_WIDTH(64           ),
-        .ADDR_WIDTH($clog2(16384))
-
-    ) dummy_dccm_preloader (
-        .clk_i   (),
-
-        .cs_i    (        ),
-        .we_i    (        ),
-        .addr_i  (        ),
-        .wdata_i (        ),
-        .rdata_o (        )
     );
 
 endmodule
@@ -360,31 +312,23 @@ module caliptra_sram_dual #(
     localparam NUM_BYTES = DATA_WIDTH/8 + ((DATA_WIDTH % 8) ? 1 : 0);
 
     (* ram_style = "block" *)
-    logic [7:0] ram [DEPTH][NUM_BYTES-1:0];
+    reg [DATA_WIDTH-1:0] ram [DEPTH];
 
     always @(posedge a_clk_i) begin
         if (a_cs_i & a_we_i) begin
-            for (int i = 0; i < NUM_BYTES; i++) begin
-                ram[a_addr_i][i] <= a_wdata_i[i*8 +: 8];
-            end
+            ram[a_addr_i] <= a_wdata_i;
         end
         if (a_cs_i & ~a_we_i) begin
-            for (int i = 0; i < NUM_BYTES; i++) begin
-                a_rdata_o[i*8 +: 8] <= ram[a_addr_i][i];
-            end
+            a_rdata_o <= ram[a_addr_i];
         end
     end
 
     always @(posedge b_clk_i) begin
         if (b_cs_i & b_we_i) begin
-            for (int i = 0; i < NUM_BYTES; i++) begin
-                ram[b_addr_i][i] <= b_wdata_i[i*8 +: 8];
-            end
+            ram[b_addr_i] <= b_wdata_i;
         end
         if (b_cs_i & ~b_we_i) begin
-            for (int i = 0; i < NUM_BYTES; i++) begin
-                b_rdata_o[i*8 +: 8] <= ram[b_addr_i][i];
-            end
+            b_rdata_o <= ram[b_addr_i];
         end
     end
 

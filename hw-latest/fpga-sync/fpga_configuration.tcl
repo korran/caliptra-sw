@@ -73,8 +73,9 @@ remove_files [ glob $rtlDir/src/spi_host/rtl/*.sv ]
 remove_files [ glob $rtlDir/src/keyvault/rtl/kv_reg.sv ]
 
 # Add FPGA specific sources
-add_files [ glob $fpgaDir/rtl/*.sv]
-add_files [ glob $fpgaDir/rtl/*.v]
+add_files [ glob $fpgaDir/../fpga/src/fpga_icg.sv ]
+add_files [ glob $fpgaDir/../fpga/src/caliptra_veer_sram_export.sv ]
+# add_files [ glob $fpgaDir/rtl/*.v]
 add_files [ glob $fpgaDir/../fpga/src/kv_reg.sv]
 
 # Mark all Verilog sources as SystemVerilog because some of them have SystemVerilog syntax.
@@ -97,9 +98,11 @@ create_bd_cell -type module -reference caliptra_fpga_sync_top_vivado caliptra_fp
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ultra_ps_e_0
 set_property CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {20} [get_bd_cells zynq_ultra_ps_e_0]
 set_property CONFIG.PSU__USE__IRQ0 {1} [get_bd_cells zynq_ultra_ps_e_0]
+set_property CONFIG.PSU__MAXIGP2__DATA_WIDTH {64} [get_bd_cells zynq_ultra_ps_e_0]
 
 # AXI4->AXI4Lite protocol converter
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_protocol_converter:2.1 axi4toaxi4lite_0
+set_property CONFIG.DATA_WIDTH {64} [get_bd_cells axi4toaxi4lite_0]
 
 # Create reset block
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0
@@ -112,7 +115,7 @@ connect_bd_intf_net -boundary_type upper [get_bd_intf_pins axi4toaxi4lite_0/M_AX
 
 connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins caliptra_fpga_sync_top_vivado_0/rstn] [get_bd_pins axi4toaxi4lite_0/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
 
-connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins caliptra_fpga_sync_top_vivado_0/aclk] [get_bd_pins axi4toaxi4lite_0/aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
+connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins caliptra_fpga_sync_top_vivado_0/aclk] [get_bd_pins axi4toaxi4lite_0/aclk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
 
 connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
@@ -124,6 +127,14 @@ set_property location {3 1273 318} [get_bd_cells caliptra_fpga_sync_top_vivado_0
 
 
 save_bd_design
+
+make_wrapper -files [get_files $outputDir/caliptra_fpga_sync.srcs/sources_1/bd/caliptra_fpga_sync_package_bd/caliptra_fpga_sync_package_bd.bd] -top
+
+add_files -norecurse $outputDir/caliptra_fpga_sync.gen/sources_1/bd/caliptra_fpga_sync_package_bd/hdl/caliptra_fpga_sync_package_bd_wrapper.v
+
+update_compile_order -fileset sources_1
+
+set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
 
 
 #close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
