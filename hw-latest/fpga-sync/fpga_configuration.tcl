@@ -89,7 +89,7 @@ set_property include_dirs $rtlDir/src/integration/rtl [current_fileset]
 # Set caliptra_fpga_sync_top_vivado as top in case next steps fail so that the top is something useful.
 set_property top caliptra_fpga_sync_top_vivado [current_fileset]
 
-# Create block diagram that includes an instance of caliptra_fpga_sync_top_vivado 
+# Create block diagram that includes an instance of caliptra_fpga_sync_top_vivado
 create_bd_design "caliptra_fpga_sync_package_bd"
 create_bd_cell -type module -reference caliptra_fpga_sync_top_vivado caliptra_fpga_sync_top_vivado_0
 
@@ -98,11 +98,35 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ultra_ps_e_
 set_property CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {20} [get_bd_cells zynq_ultra_ps_e_0]
 set_property CONFIG.PSU__USE__IRQ0 {1} [get_bd_cells zynq_ultra_ps_e_0]
 
+# AXI4->AXI4Lite protocol converter
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_protocol_converter:2.1 axi4toaxi4lite_0
+
 # Create reset block
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0
 
+# Connect ports
+
+connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_LPD [get_bd_intf_pins axi4toaxi4lite_0/S_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_LPD]
+
+connect_bd_intf_net -boundary_type upper [get_bd_intf_pins axi4toaxi4lite_0/M_AXI] [get_bd_intf_pins caliptra_fpga_sync_top_vivado_0/interface_aximm]
+
+connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins caliptra_fpga_sync_top_vivado_0/rstn] [get_bd_pins axi4toaxi4lite_0/aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+
+connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins caliptra_fpga_sync_top_vivado_0/aclk] [get_bd_pins axi4toaxi4lite_0/aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
+
+connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
+
+# Make the diagram pretty
+set_property location {1 340 230} [get_bd_cells zynq_ultra_ps_e_0]
+set_property location {1 346 430} [get_bd_cells proc_sys_reset_0]
+set_property location {2 895 231} [get_bd_cells axi4toaxi4lite_0]
+set_property location {3 1273 318} [get_bd_cells caliptra_fpga_sync_top_vivado_0]
+
+
 save_bd_design
-close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
+
+
+#close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
 
 
 
@@ -119,10 +143,10 @@ close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
 # ipx::check_integrity [ipx::current_core]
 # ipx::save_core [ipx::current_core]
 
-# Close temp project
-close_project
-# Close caliptra_fpga_sync
-close_project
+# # Close temp project
+# close_project
+# # Close caliptra_fpga_sync
+# close_project
 
 # # Packaging complete
 # 
@@ -227,26 +251,26 @@ close_project
 # set_property verilog_define $VERILOG_OPTIONS [current_fileset]
 
 # Create the HDL wrapper for the block design and add it. This will be set as top.
-make_wrapper -files [get_files $outputDir/caliptra_fpga_project.srcs/sources_1/bd/caliptra_fpga_project_bd/caliptra_fpga_project_bd.bd] -top
-add_files -norecurse $outputDir/caliptra_fpga_project.gen/sources_1/bd/caliptra_fpga_project_bd/hdl/caliptra_fpga_project_bd_wrapper.v
-
-update_compile_order -fileset sources_1
-
-# The FPGA loading methods currently in use require the bin file to be generated.
-set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
-
-# Add FPGA constraints
-add_files -fileset constrs_1 $fpgaDir/src/constraints.xdc
-
-# Start build
-if {$BUILD} {
-  launch_runs synth_1 -jobs 10
-  wait_on_runs synth_1
-  launch_runs impl_1 -jobs 10
-  wait_on_runs impl_1
-  open_run impl_1
-  report_utilization -file $outputDir/utilization.txt
-  # Embed git hash in USR_ACCESS register for bitstream identification.
-  set_property BITSTREAM.CONFIG.USR_ACCESS 0x$VERSION [current_design]
-  write_bitstream -bin_file $outputDir/caliptra_fpga
-}
+# make_wrapper -files [get_files $outputDir/caliptra_fpga_project.srcs/sources_1/bd/caliptra_fpga_project_bd/caliptra_fpga_project_bd.bd] -top
+# add_files -norecurse $outputDir/caliptra_fpga_project.gen/sources_1/bd/caliptra_fpga_project_bd/hdl/caliptra_fpga_project_bd_wrapper.v
+# 
+# update_compile_order -fileset sources_1
+# 
+# # The FPGA loading methods currently in use require the bin file to be generated.
+# set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
+# 
+# # Add FPGA constraints
+# add_files -fileset constrs_1 $fpgaDir/src/constraints.xdc
+# 
+# # Start build
+# if {$BUILD} {
+#   launch_runs synth_1 -jobs 10
+#   wait_on_runs synth_1
+#   launch_runs impl_1 -jobs 10
+#   wait_on_runs impl_1
+#   open_run impl_1
+#   report_utilization -file $outputDir/utilization.txt
+#   # Embed git hash in USR_ACCESS register for bitstream identification.
+#   set_property BITSTREAM.CONFIG.USR_ACCESS 0x$VERSION [current_design]
+#   write_bitstream -bin_file $outputDir/caliptra_fpga
+# }

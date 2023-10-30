@@ -1,30 +1,30 @@
 module caliptra_fpga_sync_top_vivado    (
-        input aclk,
-        input rstn,
+        input wire aclk,
+        input wire rstn,
 
-        input arvalid,
-        input [31:0] araddr,
-        input [2:0] arprot,
-        output arready,
+        input wire arvalid,
+        input wire [31:0] araddr,
+        input wire [2:0] arprot,
+        output wire arready,
 
-        input rready,
-        output rvalid,
-        output [63:0] rdata,
-        output [1:0] rresp,
+        input wire rready,
+        output wire rvalid,
+        output wire [63:0] rdata,
+        output wire [1:0] rresp,
 
-        input awvalid,
-        input [31:0] awaddr,
-        input [2:0] awprot,
-        output awready,
+        input wire awvalid,
+        input wire [31:0] awaddr,
+        input wire [2:0] awprot,
+        output wire awready,
 
-        input wvalid,
-        input [63:0] wdata,
-        input [7:0] wstrb,
-        output wready,
+        input wire wvalid,
+        input wire [63:0] wdata,
+        input wire [7:0] wstrb,
+        output wire wready,
 
-        input bready,
-        output bvalid,
-        output [1:0] bresp
+        input wire bready,
+        output wire bvalid,
+        output wire [1:0] bresp
     );
 
     caliptra_fpga_sync_top regs (
