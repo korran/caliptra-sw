@@ -69,20 +69,23 @@ add_files [ glob $rtlDir/src/*/rtl/*.v ]
 # TODO: Re-include these files when spi_host is used.
 remove_files [ glob $rtlDir/src/spi_host/rtl/*.sv ]
 
+remove_files [ glob $rtlDir/src/ecc/rtl/ecc_ram_tdp_file.sv ]
+
 # Key Vault is very large. Replacing KV with a version with the minimum number of entries.
 remove_files [ glob $rtlDir/src/keyvault/rtl/kv_reg.sv ]
 
 # Add FPGA specific sources
+add_files [ glob $fpgaDir/rtl/*.v]
+add_files [ glob $fpgaDir/rtl/*.sv]
 add_files [ glob $fpgaDir/../fpga/src/fpga_icg.sv ]
 add_files [ glob $fpgaDir/../fpga/src/caliptra_veer_sram_export.sv ]
-# add_files [ glob $fpgaDir/rtl/*.v]
 add_files [ glob $fpgaDir/../fpga/src/kv_reg.sv]
 
 # Mark all Verilog sources as SystemVerilog because some of them have SystemVerilog syntax.
 set_property file_type SystemVerilog [get_files *.v]
 
 # Exception: caliptra_fpga_sync_top_vivado.v needs to be Verilog to be included in a Block Diagram.
-set_property file_type Verilog [get_files  $fpgaDir/rtl/caliptra_fpga_sync_top_vivado.v]
+set_property file_type Verilog [get_files $fpgaDir/rtl/caliptra_fpga_sync_top_vivado.v]
 
 # Add include paths
 set_property include_dirs $rtlDir/src/integration/rtl [current_fileset]
@@ -119,12 +122,14 @@ connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins caliptra_fpga_sync_to
 
 connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
+# Create address segments
+assign_bd_address -offset 0x80000000 -range 0x00002000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs caliptra_fpga_sync_top_vivado_0/interface_aximm/reg0] -force
+
 # Make the diagram pretty
 set_property location {1 340 230} [get_bd_cells zynq_ultra_ps_e_0]
 set_property location {1 346 430} [get_bd_cells proc_sys_reset_0]
 set_property location {2 895 231} [get_bd_cells axi4toaxi4lite_0]
 set_property location {3 1273 318} [get_bd_cells caliptra_fpga_sync_top_vivado_0]
-
 
 save_bd_design
 
@@ -135,153 +140,18 @@ add_files -norecurse $outputDir/caliptra_fpga_sync.gen/sources_1/bd/caliptra_fpg
 update_compile_order -fileset sources_1
 
 set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
+set_property STEPS.SYNTH_DESIGN.ARGS.GATED_CLOCK_CONVERSION on [get_runs synth_1]
 
+close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
 
-#close_bd_design [get_bd_designs caliptra_fpga_sync_package_bd]
+# Start build
+if {$BUILD} {
+  launch_runs synth_1 -jobs 10
+  wait_on_runs synth_1
+  launch_runs impl_1 -jobs 10
+  wait_on_runs impl_1
+  open_run impl_1
+  report_utilization -file $outputDir/utilization.txt
+  write_bitstream -bin_file $outputDir/caliptra_fpga
+}
 
-
-
-# Package IP
-# ipx::package_project -root_dir $packageDir -vendor design -library user -taxonomy /UserIP -import_files -set_current false
-# ipx::unload_core $packageDir/component.xml
-# ipx::edit_ip_in_project -upgrade true -name tmp_edit_project -directory $packageDir $packageDir/component.xml
-# ipx::infer_bus_interfaces xilinx.com:interface:apb_rtl:1.0 [ipx::current_core]
-# ipx::infer_bus_interfaces xilinx.com:interface:bram_rtl:1.0 [ipx::current_core]
-# set_property core_revision 1 [ipx::current_core]
-# ipx::update_source_project_archive -component [ipx::current_core]
-# ipx::create_xgui_files [ipx::current_core]
-# ipx::update_checksums [ipx::current_core]
-# ipx::check_integrity [ipx::current_core]
-# ipx::save_core [ipx::current_core]
-
-# # Close temp project
-# close_project
-# # Close caliptra_fpga_sync
-# close_project
-
-# # Packaging complete
-# 
-# # Create a project for the SOC connections
-# create_project caliptra_fpga_project $outputDir -part xczu7ev-ffvc1156-2-e
-# 
-# # Include the packaged IP
-# set_property  ip_repo_paths  "$packageDir $adapterDir" [current_project]
-# update_ip_catalog
-# 
-# # Create SOC block design
-# create_bd_design "caliptra_fpga_project_bd"
-# 
-# # Add Caliptra package
-# create_bd_cell -type ip -vlnv design:user:caliptra_fpga_sync_top_vivado:1.0 caliptra_fpga_sync_top_vivado_0
-# 
-# # Add Zynq PS
-# create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ultra_ps_e_0
-# set_property CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {20} [get_bd_cells zynq_ultra_ps_e_0]
-# set_property CONFIG.PSU__USE__IRQ0 {1} [get_bd_cells zynq_ultra_ps_e_0]
-# 
-# # Add AXI Interconnect
-# create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0
-# set_property CONFIG.NUM_MI {3} [get_bd_cells axi_interconnect_0]
-# 
-# # Add caliptra_soc
-# create_bd_cell -type ip -vlnv design:user:soc_adapter:1.0 caliptra_soc_0
-# 
-# # Add AXI APB Bridge for Caliptra
-# create_bd_cell -type ip -vlnv xilinx.com:ip:axi_apb_bridge:3.0 axi_apb_bridge_0
-# set_property -dict [list \
-#   CONFIG.C_APB_NUM_SLAVES {1} \
-#   CONFIG.C_M_APB_PROTOCOL {apb4} \
-# ] [get_bd_cells axi_apb_bridge_0]
-# 
-# # Add AXI BRAM Controller for backdoor access to IMEM
-# create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 axi_bram_ctrl_0
-# set_property CONFIG.SINGLE_PORT_BRAM {1} [get_bd_cells axi_bram_ctrl_0]
-# 
-# # Create reset block
-# create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0
-# 
-# # Create FIFO for fake UART communication
-# create_bd_cell -type ip -vlnv xilinx.com:ip:fifo_generator:13.2 fifo_generator_0
-# set_property -dict [list \
-#   CONFIG.Input_Data_Width {8} \
-#   CONFIG.Performance_Options {First_Word_Fall_Through} \
-#   CONFIG.Full_Threshold_Assert_Value {512} \
-#   CONFIG.Programmable_Full_Type {Single_Programmable_Full_Threshold_Constant} \
-# ] [get_bd_cells fifo_generator_0]
-# 
-# # Move blocks around on the block diagram. This step is optional.
-# set_property location {1 177 345} [get_bd_cells zynq_ultra_ps_e_0]
-# set_property location {2 696 373} [get_bd_cells axi_interconnect_0]
-# set_property location {2 707 654} [get_bd_cells proc_sys_reset_0]
-# set_property location {3 1021 286} [get_bd_cells caliptra_soc_0]
-# set_property location {3 1041 439} [get_bd_cells axi_apb_bridge_0]
-# set_property location {3 1151 617} [get_bd_cells axi_bram_ctrl_0]
-# set_property location {4 1335 456} [get_bd_cells caliptra_fpga_sync_top_vivado_0]
-# set_property location {4 1446 111} [get_bd_cells fifo_generator_0]
-# 
-# # Create interface connections
-# connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M [get_bd_intf_pins axi_apb_bridge_0/APB_M] [get_bd_intf_pins caliptra_fpga_sync_top_vivado_0/s_apb]
-# connect_bd_intf_net -boundary_type upper [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins caliptra_soc_0/interface_aximm]
-# connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_apb_bridge_0/AXI4_LITE] [get_bd_intf_pins axi_interconnect_0/M01_AXI]
-# connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_LPD [get_bd_intf_pins axi_interconnect_0/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_LPD]
-# connect_bd_intf_net [get_bd_intf_pins axi_bram_ctrl_0/S_AXI] -boundary_type upper [get_bd_intf_pins axi_interconnect_0/M02_AXI]
-# connect_bd_intf_net [get_bd_intf_pins caliptra_fpga_sync_top_vivado_0/axi_bram] [get_bd_intf_pins axi_bram_ctrl_0/BRAM_PORTA]
-# 
-# # Create port connections
-# connect_bd_net -net proc_sys_reset_0_peripheral_aresetn [get_bd_pins axi_apb_bridge_0/s_axi_aresetn] [get_bd_pins caliptra_soc_0/rstn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-# connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins axi_apb_bridge_0/s_axi_aclk] [get_bd_pins caliptra_soc_0/aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins caliptra_fpga_sync_top_vivado_0/core_clk] [get_bd_pins proc_sys_reset_0/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-# # Caliptra SOC adapter connections
-# connect_bd_net [get_bd_pins caliptra_fpga_sync_top_vivado_0/gpio_in] [get_bd_pins caliptra_soc_0/gpio_out]
-# connect_bd_net [get_bd_pins caliptra_fpga_sync_top_vivado_0/gpio_out] [get_bd_pins caliptra_soc_0/gpio_in]
-# connect_bd_net [get_bd_pins caliptra_fpga_sync_top_vivado_0/pauser] [get_bd_pins caliptra_soc_0/pauser]
-# connect_bd_net [get_bd_pins caliptra_fpga_sync_top_vivado_0/cptra_obf_key] [get_bd_pins caliptra_soc_0/cptra_obf_key]
-# 
-# connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins proc_sys_reset_0/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
-# connect_bd_net [get_bd_pins axi_bram_ctrl_0/s_axi_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-# connect_bd_net [get_bd_pins axi_bram_ctrl_0/s_axi_aresetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-# connect_bd_net [get_bd_pins axi_interconnect_0/M02_ACLK] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-# connect_bd_net [get_bd_pins axi_interconnect_0/M02_ARESETN] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
-# 
-# # Connect FIFO to Caliptra and to SOC adapter
-# connect_bd_net [get_bd_pins fifo_generator_0/clk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-# connect_bd_net [get_bd_pins fifo_generator_0/srst] [get_bd_pins proc_sys_reset_0/peripheral_reset]
-# connect_bd_net [get_bd_pins fifo_generator_0/dout] [get_bd_pins caliptra_soc_0/fifo_char]
-# connect_bd_net [get_bd_pins fifo_generator_0/empty] [get_bd_pins caliptra_soc_0/fifo_empty]
-# connect_bd_net [get_bd_pins fifo_generator_0/full] [get_bd_pins caliptra_soc_0/fifo_full]
-# connect_bd_net [get_bd_pins fifo_generator_0/din] [get_bd_pins caliptra_fpga_sync_top_vivado_0/fifo_char]
-# connect_bd_net [get_bd_pins fifo_generator_0/wr_en] [get_bd_pins caliptra_fpga_sync_top_vivado_0/fifo_write_en]
-# connect_bd_net [get_bd_pins fifo_generator_0/rd_en] [get_bd_pins caliptra_soc_0/fifo_rd]
-# connect_bd_net [get_bd_pins fifo_generator_0/prog_full] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
-# 
-# # Create address segments
-# assign_bd_address -offset 0x80000000 -range 0x00002000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs caliptra_soc_0/interface_aximm/reg0] -force
-# assign_bd_address -offset 0x82000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs axi_bram_ctrl_0/S_AXI/Mem0] -force
-# assign_bd_address -offset 0x90000000 -range 0x00100000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs caliptra_fpga_sync_top_vivado_0/s_apb/Reg] -force
-# 
-# save_bd_design
-# set_property verilog_define $VERILOG_OPTIONS [current_fileset]
-
-# Create the HDL wrapper for the block design and add it. This will be set as top.
-# make_wrapper -files [get_files $outputDir/caliptra_fpga_project.srcs/sources_1/bd/caliptra_fpga_project_bd/caliptra_fpga_project_bd.bd] -top
-# add_files -norecurse $outputDir/caliptra_fpga_project.gen/sources_1/bd/caliptra_fpga_project_bd/hdl/caliptra_fpga_project_bd_wrapper.v
-# 
-# update_compile_order -fileset sources_1
-# 
-# # The FPGA loading methods currently in use require the bin file to be generated.
-# set_property STEPS.WRITE_BITSTREAM.ARGS.BIN_FILE true [get_runs impl_1]
-# 
-# # Add FPGA constraints
-# add_files -fileset constrs_1 $fpgaDir/src/constraints.xdc
-# 
-# # Start build
-# if {$BUILD} {
-#   launch_runs synth_1 -jobs 10
-#   wait_on_runs synth_1
-#   launch_runs impl_1 -jobs 10
-#   wait_on_runs impl_1
-#   open_run impl_1
-#   report_utilization -file $outputDir/utilization.txt
-#   # Embed git hash in USR_ACCESS register for bitstream identification.
-#   set_property BITSTREAM.CONFIG.USR_ACCESS 0x$VERSION [current_design]
-#   write_bitstream -bin_file $outputDir/caliptra_fpga
-# }
