@@ -2,6 +2,7 @@
 
 use crate::bus_logger::{BusLogger, LogFile, NullBus};
 use crate::EtrngResponse;
+use crate::mmap::Mmap;
 use crate::{HwModel, TrngMode};
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
@@ -9,7 +10,8 @@ use caliptra_fpga_sync_registers::regs::ClockControlReadVal;
 use caliptra_fpga_sync_verilated::{FpgaSyncVerilated, AxiErr};
 use caliptra_hw_model_types::ErrorInjectionMode;
 use std::cell::{Cell, RefCell};
-use std::io::Write;
+use std::ffi::NulError;
+use std::io::{Write, self};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -19,10 +21,10 @@ use std::env;
 // How many clock cycles before emitting a TRNG nibble
 const TRNG_DELAY: u32 = 4;
 
-pub struct ApbBus<'a> {
-    model: &'a mut ModelFpgaSync,
+pub struct ApbBus<'a, C: FpgaSyncControl> {
+    model: &'a mut ModelFpgaSync<C>,
 }
-impl<'a> Bus for ApbBus<'a> {
+impl<'a, C: FpgaSyncControl> Bus for ApbBus<'a, C> {
     fn read(&mut self, size: RvSize, addr: RvAddr) -> Result<RvData, caliptra_emu_bus::BusError> {
         if addr & 0x3 != 0 {
             return Err(caliptra_emu_bus::BusError::LoadAddrMisaligned);
@@ -63,8 +65,89 @@ struct AbsoluteEtrngResponse {
     data: [u32; 12],
 }
 
-pub struct ModelFpgaSync {
-    v: FpgaSyncVerilated,
+
+pub trait FpgaSyncControl {
+    fn new() -> io::Result<Self> where Self: Sized;
+    fn step(&mut self);
+    fn axi_read(&mut self, addr: u32) -> Result<u64, AxiErr>;
+    fn axi_write(&mut self, addr: u32, data: u64) -> Result<(), AxiErr>;
+    fn start_tracing(&mut self, path: &str, depth: i32) -> Result<(), NulError>;
+    fn stop_tracing(&mut self);
+}
+
+impl FpgaSyncControl for FpgaSyncVerilated {
+    fn new() -> io::Result<Self> {
+        Ok(FpgaSyncVerilated::new())
+    }
+    fn step(&mut self) {
+        FpgaSyncVerilated::next_cycle_high(self, 1)
+
+    }
+    fn axi_read(&mut self, addr: u32) -> Result<u64, AxiErr> {
+        FpgaSyncVerilated::axi_read(self, addr)
+    }
+
+    fn axi_write(&mut self, addr: u32, data: u64) -> Result<(), AxiErr> {
+        FpgaSyncVerilated::axi_write(self, addr, data)
+    }
+
+    fn start_tracing(&mut self, path: &str, depth: i32) -> Result<(), NulError> {
+        FpgaSyncVerilated::start_tracing(self, path, depth)
+    }
+
+    fn stop_tracing(&mut self) {
+        FpgaSyncVerilated::stop_tracing(self)
+    }
+}
+
+struct ZynqFpgaSyncControl {
+    mmap: Mmap,
+}
+
+impl ZynqFpgaSyncControl {
+    fn check_addr(&self, addr: u32) -> Result<(), AxiErr> {
+        let addr = usize::try_from(addr).unwrap();
+        if addr % 8 != 0 || addr > self.mmap.len() - 8 {
+            return Err(AxiErr::SlvErr)
+        }
+        Ok(())
+    }
+}
+impl FpgaSyncControl for ZynqFpgaSyncControl {
+    fn new() -> io::Result<Self> {
+        Ok(Self { mmap: Mmap::open_read_write(Path::new("/dev/mem"), 0x8000_0000, 4096)? })
+    }
+
+    fn step(&mut self) {
+        // Can't step the clock attached to the zynq AXI bus; ignore
+    }
+
+    fn axi_read(&mut self, addr: u32) -> Result<u64, AxiErr> {
+        self.check_addr(addr)?;
+        unsafe {
+            Ok((self.mmap.ptr().add(addr as usize) as *mut u64).read_volatile())
+        }
+    }
+
+    fn axi_write(&mut self, addr: u32, data: u64) -> Result<(), AxiErr> {
+        self.check_addr(addr)?;
+        unsafe {
+            (self.mmap.ptr().add(addr as usize) as *mut u64).write_volatile(data)
+        }
+        Ok(())
+    }
+
+    fn start_tracing(&mut self, path: &str, depth: i32) -> Result<(), NulError> {
+        // Can't trace an FPGA; ignore
+        Ok(())
+    }
+
+    fn stop_tracing(&mut self) {
+    }
+}
+
+pub struct ModelFpgaSync<C: FpgaSyncControl> {
+    v: C,
 
     output: Output,
     trace_enabled: bool,
@@ -83,10 +166,10 @@ pub struct ModelFpgaSync {
     soc_apb_pauser: u32,
 }
 
-impl ModelFpgaSync {
+impl<C: FpgaSyncControl> ModelFpgaSync<C> {
     /// The registers exposed by the test-bench running on the FPGA. Allows for
     /// full access to all caliptra_top signals, as well as clock control.
-    fn tb(&mut self) -> caliptra_fpga_sync_registers::RegisterBlock<AxiMmioMut> {
+    fn tb(&mut self) -> caliptra_fpga_sync_registers::RegisterBlock<AxiMmioMut<C>> {
         unsafe {
             // This pointer is never dereferenced
             #[allow(clippy::zero_ptr)]
@@ -189,8 +272,8 @@ impl ModelFpgaSync {
     }
 }
 
-impl crate::HwModel for ModelFpgaSync {
-    type TBus<'a> = ApbBus<'a>;
+impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
+    type TBus<'a> = ApbBus<'a, C> where C: 'a;
 
     fn new_unbooted(params: crate::InitParams) -> Result<Self, Box<dyn std::error::Error>>
     where
@@ -220,8 +303,7 @@ impl crate::HwModel for ModelFpgaSync {
             )
             .into());
         }
-        let mut v = FpgaSyncVerilated::new();
-
+        let mut v = C::new()?;
 
         let mut m = ModelFpgaSync {
             v,
@@ -244,10 +326,9 @@ impl crate::HwModel for ModelFpgaSync {
 
         m.tracing_hint(true);
 
-        m.v.next_cycle_high(1);
-        m.v.next_cycle_high(1);
-        m.v.next_cycle_high(1);
-
+        m.v.step();
+        m.v.step();
+        m.v.step();
 
         m.write_rom_image(params.rom)?;
 
@@ -347,7 +428,7 @@ impl crate::HwModel for ModelFpgaSync {
         //}
     }
 }
-impl ModelFpgaSync {
+impl<C: FpgaSyncControl> ModelFpgaSync<C> {
     fn process_trng(&mut self) {
         if self.process_trng_start() {
             self.tb().clock_control().write(|w| w.cycle_count(1).go(true));
@@ -425,17 +506,17 @@ impl ModelFpgaSync {
 }
 
 /// An MMIO implementation that reads and writes to the AXI bus
-pub struct AxiMmioMut<'a> {
-    model: RefCell<&'a mut ModelFpgaSync>,
+pub struct AxiMmioMut<'a, C: FpgaSyncControl> {
+    model: RefCell<&'a mut ModelFpgaSync<C>>,
 }
-impl<'a> AxiMmioMut<'a> {
-    pub fn new(model: &'a mut ModelFpgaSync) -> Self {
+impl<'a, C: FpgaSyncControl> AxiMmioMut<'a, C> {
+    pub fn new(model: &'a mut ModelFpgaSync<C>) -> Self {
         Self {
             model: RefCell::new(model),
         }
     }
 }
-impl<'a> ureg::Mmio for AxiMmioMut<'a> {
+impl<'a, C: FpgaSyncControl> ureg::Mmio for AxiMmioMut<'a, C> {
     /// Loads from address `src` on the bus and returns the value.
     ///
     /// # Panics
@@ -469,7 +550,7 @@ unsafe fn transmute_to_u64<T>(src: &T) -> u64 {
     }
 }
 
-impl<'a> ureg::MmioMut for AxiMmioMut<'a> {
+impl<'a, C: FpgaSyncControl> ureg::MmioMut for AxiMmioMut<'a, C> {
     /// Stores `src` to address `dst` on the bus.
     ///
     /// # Panics
