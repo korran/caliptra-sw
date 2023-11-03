@@ -9,7 +9,6 @@ use std::{
 
 use caliptra_api as api;
 use caliptra_emu_bus::Bus;
-use caliptra_fpga_sync_verilated::FpgaSyncVerilated;
 use caliptra_hw_model_types::{
     ErrorInjectionMode, EtrngResponse, RandomEtrngResponses, RandomNibbles, DEFAULT_CPTRA_OBF_KEY,
 };
@@ -81,7 +80,10 @@ pub type DefaultHwModel = ModelVerilated;
 pub type DefaultHwModel = ModelFpgaRealtime;
 
 #[cfg(feature = "fpga_sync")]
-pub type DefaultHwModel = ModelFpgaSync<FpgaSyncVerilated>;
+pub type DefaultHwModel = model_fpga_sync::ModelFpgaSync<model_fpga_sync::ZynqFpgaSyncControl>;
+
+#[cfg(feature = "fpga_sync_verilated")]
+pub type DefaultHwModel = model_fpga_sync::ModelFpgaSync<fpga_sync_verilated::FpgaSyncVerilated>;
 
 /// Constructs an HwModel based on the cargo features and environment
 /// variables. Most test cases that need to construct a HwModel should use this

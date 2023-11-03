@@ -7,9 +7,9 @@ use crate::{HwModel, TrngMode};
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
 use caliptra_fpga_sync_registers::regs::ClockControlReadVal;
-use caliptra_fpga_sync_verilated::{FpgaSyncVerilated, AxiErr};
 use caliptra_hw_model_types::ErrorInjectionMode;
 use std::cell::{Cell, RefCell};
+use std::error::Error;
 use std::ffi::NulError;
 use std::io::{Write, self};
 use std::path::Path;
@@ -20,6 +20,19 @@ use std::env;
 
 // How many clock cycles before emitting a TRNG nibble
 const TRNG_DELAY: u32 = 4;
+
+#[derive(Debug)]
+pub enum AxiErr {
+    Timeout = 1,
+    SlvErr = 2,
+    DecErr = 3,
+}
+impl Error for AxiErr {}
+impl std::fmt::Display for AxiErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
+        <Self as std::fmt::Debug>::fmt(self, f) 
+    }
+}
 
 pub struct ApbBus<'a, C: FpgaSyncControl> {
     model: &'a mut ModelFpgaSync<C>,
@@ -75,6 +88,7 @@ pub trait FpgaSyncControl {
     fn stop_tracing(&mut self);
 }
 
+#[cfg(feature = "fpga_sync_verilated")]
 impl FpgaSyncControl for FpgaSyncVerilated {
     fn new() -> io::Result<Self> {
         Ok(FpgaSyncVerilated::new())
@@ -100,7 +114,7 @@ impl FpgaSyncControl for FpgaSyncVerilated {
     }
 }
 
-struct ZynqFpgaSyncControl {
+pub struct ZynqFpgaSyncControl {
     mmap: Mmap,
 }
 
@@ -108,6 +122,7 @@ impl ZynqFpgaSyncControl {
     fn check_addr(&self, addr: u32) -> Result<(), AxiErr> {
         let addr = usize::try_from(addr).unwrap();
         if addr % 8 != 0 || addr > self.mmap.len() - 8 {
+            println!("Don't like address {:x}", addr);
             return Err(AxiErr::SlvErr)
         }
         Ok(())
@@ -115,7 +130,7 @@ impl ZynqFpgaSyncControl {
 }
 impl FpgaSyncControl for ZynqFpgaSyncControl {
     fn new() -> io::Result<Self> {
-        Ok(Self { mmap: Mmap::open_read_write(Path::new("/dev/mem"), 0x8000_0000, 4096)? })
+        Ok(Self { mmap: Mmap::open_read_write(Path::new("/dev/mem"), 0x8000_0000, 128 * 1024)? })
     }
 
     fn step(&mut self) {
@@ -321,7 +336,8 @@ impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
 
             log,
 
-            soc_apb_pauser: params.soc_apb_pauser,
+            // TODO: Make this a constant
+            soc_apb_pauser: 1,
         };
 
         m.tracing_hint(true);
@@ -426,6 +442,10 @@ impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
         //        self.v.input.sram_error_injection_mode = 0x8;
         //    }
         //}
+    }
+
+    fn set_apb_pauser(&mut self, pauser: u32) {
+        todo!()
     }
 }
 impl<C: FpgaSyncControl> ModelFpgaSync<C> {
