@@ -188,6 +188,8 @@ pub struct ModelFpgaSync<C: FpgaSyncControl> {
     log: Rc<RefCell<BusLogger<NullBus>>>,
 
     soc_apb_pauser: u32,
+
+    steps: u32,
 }
 
 impl<C: FpgaSyncControl> ModelFpgaSync<C> {
@@ -348,6 +350,8 @@ impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
 
             // TODO: Make this a constant
             soc_apb_pauser: 1,
+
+            steps: 0,
         };
 
         m.tracing_hint(true);
@@ -405,6 +409,7 @@ impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
     }
 
     fn step(&mut self) {
+        self.steps += 1;
         self.tb().clock_control().write(|w| w.cycle_count(1).go(true));
         let cc = self.tb().clock_control().read();
         self.handle_breakpoints(cc);

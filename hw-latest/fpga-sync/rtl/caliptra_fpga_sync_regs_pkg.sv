@@ -95,19 +95,19 @@ package caliptra_fpga_sync_regs_pkg;
     } caliptra_fpga_sync_regs__clock_control__go__in_t;
 
     typedef struct {
-        logic next;
+        logic hwset;
     } caliptra_fpga_sync_regs__clock_control__bkpt_generic_output_wires__in_t;
 
     typedef struct {
-        logic next;
+        logic hwset;
     } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_data_avail__in_t;
 
     typedef struct {
-        logic next;
+        logic hwset;
     } caliptra_fpga_sync_regs__clock_control__bkpt_mailbox_flow_done__in_t;
 
     typedef struct {
-        logic next;
+        logic hwset;
     } caliptra_fpga_sync_regs__clock_control__bkpt_etrng_req__in_t;
 
     typedef struct {

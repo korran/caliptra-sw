@@ -1337,8 +1337,8 @@ module caliptra_fpga_sync_regs (
         if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
             next_c = field_storage.clock_control.bkpt_generic_output_wires.value & ~(decoded_wr_data[33:33] & decoded_wr_biten[33:33]);
             load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.clock_control.bkpt_generic_output_wires.next;
+        end else if(hwif_in.clock_control.bkpt_generic_output_wires.hwset) begin // HW Set
+            next_c = '1;
             load_next_c = '1;
         end
         field_combo.clock_control.bkpt_generic_output_wires.next = next_c;
@@ -1359,8 +1359,8 @@ module caliptra_fpga_sync_regs (
         if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
             next_c = field_storage.clock_control.bkpt_mailbox_data_avail.value & ~(decoded_wr_data[34:34] & decoded_wr_biten[34:34]);
             load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.clock_control.bkpt_mailbox_data_avail.next;
+        end else if(hwif_in.clock_control.bkpt_mailbox_data_avail.hwset) begin // HW Set
+            next_c = '1;
             load_next_c = '1;
         end
         field_combo.clock_control.bkpt_mailbox_data_avail.next = next_c;
@@ -1381,8 +1381,8 @@ module caliptra_fpga_sync_regs (
         if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
             next_c = field_storage.clock_control.bkpt_mailbox_flow_done.value & ~(decoded_wr_data[35:35] & decoded_wr_biten[35:35]);
             load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.clock_control.bkpt_mailbox_flow_done.next;
+        end else if(hwif_in.clock_control.bkpt_mailbox_flow_done.hwset) begin // HW Set
+            next_c = '1;
             load_next_c = '1;
         end
         field_combo.clock_control.bkpt_mailbox_flow_done.next = next_c;
@@ -1403,8 +1403,8 @@ module caliptra_fpga_sync_regs (
         if(decoded_reg_strb.clock_control && decoded_req_is_wr) begin // SW write 1 clear
             next_c = field_storage.clock_control.bkpt_etrng_req.value & ~(decoded_wr_data[36:36] & decoded_wr_biten[36:36]);
             load_next_c = '1;
-        end else begin // HW Write
-            next_c = hwif_in.clock_control.bkpt_etrng_req.next;
+        end else if(hwif_in.clock_control.bkpt_etrng_req.hwset) begin // HW Set
+            next_c = '1;
             load_next_c = '1;
         end
         field_combo.clock_control.bkpt_etrng_req.next = next_c;
