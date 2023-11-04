@@ -1,12 +1,15 @@
 // Licensed under the Apache-2.0 license
 
 use crate::bus_logger::{BusLogger, LogFile, NullBus};
+
 use crate::EtrngResponse;
 use crate::mmap::Mmap;
 use crate::{HwModel, TrngMode};
 use caliptra_emu_bus::Bus;
 use caliptra_emu_types::{RvAddr, RvData, RvSize};
 use caliptra_fpga_sync_registers::regs::ClockControlReadVal;
+#[cfg(feature = "fpga_sync_verilated")]
+use caliptra_fpga_sync_verilated::FpgaSyncVerilated;
 use caliptra_hw_model_types::ErrorInjectionMode;
 use std::cell::{Cell, RefCell};
 use std::error::Error;
@@ -21,18 +24,24 @@ use std::env;
 // How many clock cycles before emitting a TRNG nibble
 const TRNG_DELAY: u32 = 4;
 
+#[cfg(feature = "fpga_sync")]
 #[derive(Debug)]
 pub enum AxiErr {
     Timeout = 1,
     SlvErr = 2,
     DecErr = 3,
 }
+#[cfg(feature = "fpga_sync")]
 impl Error for AxiErr {}
+#[cfg(feature = "fpga_sync")]
 impl std::fmt::Display for AxiErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
         <Self as std::fmt::Debug>::fmt(self, f) 
     }
 }
+
+#[cfg(feature = "fpga_sync_verilated")]
+pub use caliptra_fpga_sync_verilated::AxiErr;
 
 pub struct ApbBus<'a, C: FpgaSyncControl> {
     model: &'a mut ModelFpgaSync<C>,
@@ -257,6 +266,7 @@ impl<C: FpgaSyncControl> ModelFpgaSync<C> {
         if cc.bkpt_generic_output_wires() {
             let ch = (self.tb().generic_output_wires().read() & 0xff) as u8;
             let now = self.tb().counter().read();
+
             self.output.sink().set_now(now);
             self.output.sink().push_uart_char(ch);
 
@@ -342,9 +352,12 @@ impl<C: FpgaSyncControl> crate::HwModel for ModelFpgaSync<C> {
 
         m.tracing_hint(true);
 
+
         m.v.step();
         m.v.step();
         m.v.step();
+
+        m.tb().control().modify(|w| w.cptra_pwrgood(false).cptra_rst_b(false));
 
         m.write_rom_image(params.rom)?;
 

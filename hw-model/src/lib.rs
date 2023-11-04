@@ -35,7 +35,7 @@ mod model_verilated;
 #[cfg(feature = "fpga_realtime")]
 mod model_fpga_realtime;
 
-#[cfg(feature = "fpga_sync")]
+#[cfg(any(feature = "fpga_sync", feature = "fpga_sync_verilated"))]
 mod model_fpga_sync;
 
 mod output;
@@ -60,8 +60,7 @@ pub enum ShaAccMode {
 #[cfg(feature = "fpga_realtime")]
 pub use model_fpga_realtime::ModelFpgaRealtime;
 
-
-#[cfg(feature = "fpga_sync")]
+#[cfg(any(feature = "fpga_sync", feature = "fpga_sync_verilated"))]
 pub use model_fpga_sync::ModelFpgaSync;
 
 /// Ideally, general-purpose functions would return `impl HwModel` instead of
@@ -70,7 +69,7 @@ pub use model_fpga_sync::ModelFpgaSync;
 /// (used by IDEs) can't fully resolve associated types from `impl Trait`, so
 /// such functions should use `DefaultHwModel` until they fix that. Users should
 /// treat `DefaultHwModel` as if it were `impl HwModel`.
-#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime"), not(feature = "fpga_sync")))]
+#[cfg(all(not(feature = "verilator"), not(feature = "fpga_realtime"), not(feature = "fpga_sync"), not(feature = "fpga_sync_verilated")))]
 pub type DefaultHwModel = ModelEmulated;
 
 #[cfg(feature = "verilator")]
@@ -83,7 +82,7 @@ pub type DefaultHwModel = ModelFpgaRealtime;
 pub type DefaultHwModel = model_fpga_sync::ModelFpgaSync<model_fpga_sync::ZynqFpgaSyncControl>;
 
 #[cfg(feature = "fpga_sync_verilated")]
-pub type DefaultHwModel = model_fpga_sync::ModelFpgaSync<fpga_sync_verilated::FpgaSyncVerilated>;
+pub type DefaultHwModel = model_fpga_sync::ModelFpgaSync<caliptra_fpga_sync_verilated::FpgaSyncVerilated>;
 
 /// Constructs an HwModel based on the cargo features and environment
 /// variables. Most test cases that need to construct a HwModel should use this
@@ -1149,6 +1148,21 @@ mod tests {
         .unwrap();
         model.step_until_output("hii").unwrap();
     }
+
+    #[test]
+    fn test_execution_explicit_steps() {
+        let mut model = caliptra_hw_model::new(BootParams {
+            init_params: InitParams {
+                rom: &gen_image_hi(),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .unwrap();
+        model.step_until(|m| m.output().peek().len() == 3);
+        assert!(model.output().peek() == "hii");
+    }
+
 
     #[test]
     fn test_output_failure() {
