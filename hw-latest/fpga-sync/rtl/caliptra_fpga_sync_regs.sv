@@ -1330,6 +1330,7 @@ module caliptra_fpga_sync_regs (
         end
     end
     assign hwif_out.clock_control.go.value = field_storage.clock_control.go.value;
+    assign hwif_out.clock_control.go.swmod = decoded_reg_strb.clock_control && decoded_req_is_wr;
     // Field: caliptra_fpga_sync_regs.clock_control.bkpt_generic_output_wires
     always_comb begin
         automatic logic [0:0] next_c = field_storage.clock_control.bkpt_generic_output_wires.value;

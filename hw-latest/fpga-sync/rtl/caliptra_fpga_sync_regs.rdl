@@ -98,7 +98,7 @@ addrmap caliptra_fpga_sync_regs {
     reg {
         field { sw=rw; hw=rw; } cycle_count[31:0] = 32'b0;
         // Set one to start running until cycle_count hits 0
-        field { sw=rw; hw=rw; onwrite=woset; } go[32:32] = 1'b0;
+        field { sw=rw; hw=rw; swmod; onwrite=woset; } go[32:32] = 1'b0;
         field { sw=rw; hw=r; hwset; onwrite=woclr; } bkpt_generic_output_wires = 1'b0;
         field { sw=rw; hw=r; hwset; onwrite=woclr; } bkpt_mailbox_data_avail = 1'b0;
         field { sw=rw; hw=r; hwset; onwrite=woclr; } bkpt_mailbox_flow_done = 1'b0;

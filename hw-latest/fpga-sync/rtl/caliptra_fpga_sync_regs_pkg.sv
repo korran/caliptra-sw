@@ -356,6 +356,7 @@ package caliptra_fpga_sync_regs_pkg;
 
     typedef struct {
         logic value;
+        logic swmod;
     } caliptra_fpga_sync_regs__clock_control__go__out_t;
 
     typedef struct {

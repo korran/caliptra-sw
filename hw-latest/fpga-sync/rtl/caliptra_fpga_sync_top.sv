@@ -104,32 +104,35 @@ module caliptra_fpga_sync_top
     reg [63:0] generic_output_wires_prev;
     wire [63:0] generic_output_wires;
     assign hwif_in.generic_output_wires.value.next = generic_output_wires;
-    wire bkpt_generic_output_wires = (aclk_gated_en && generic_output_wires_prev != generic_output_wires) && !hwif_out.clock_control.bkpt_generic_output_wires.value;
+    wire bkpt_generic_output_wires = (aclk_gated_en_prev && generic_output_wires_prev != generic_output_wires) && !hwif_out.clock_control.bkpt_generic_output_wires.value;
     assign hwif_in.clock_control.bkpt_generic_output_wires.hwset = bkpt_generic_output_wires;
 
     wire mailbox_data_avail;
     assign hwif_in.status.mailbox_data_avail.next = mailbox_data_avail;
-    wire bkpt_mailbox_data_avail = (aclk_gated_en && mailbox_data_avail) && !hwif_out.clock_control.bkpt_mailbox_data_avail.value;
+    wire bkpt_mailbox_data_avail = (aclk_gated_en_prev && mailbox_data_avail) && !hwif_out.clock_control.bkpt_mailbox_data_avail.value;
     assign hwif_in.clock_control.bkpt_mailbox_data_avail.hwset = bkpt_mailbox_data_avail;
 
     wire mailbox_flow_done;
     assign hwif_in.status.mailbox_flow_done.next = mailbox_flow_done;
-    wire bkpt_mailbox_flow_done = (aclk_gated_en && mailbox_flow_done) && !hwif_out.clock_control.bkpt_mailbox_flow_done.value;
+    wire bkpt_mailbox_flow_done = (aclk_gated_en_prev && mailbox_flow_done) && !hwif_out.clock_control.bkpt_mailbox_flow_done.value;
     assign hwif_in.clock_control.bkpt_mailbox_flow_done.hwset = bkpt_mailbox_flow_done;
 
     wire etrng_req;
     assign hwif_in.trng_out.etrng_req.next = etrng_req;
-    wire bkpt_etrng_req = (aclk_gated_en && etrng_req) && !hwif_out.clock_control.bkpt_etrng_req.value;
+    wire bkpt_etrng_req = (aclk_gated_en_prev && etrng_req) && !hwif_out.clock_control.bkpt_etrng_req.value;
     assign hwif_in.clock_control.bkpt_etrng_req.hwset = bkpt_etrng_req;
 
     assign hwif_in.clock_control.go.next = aclk_gated_en;
 
-    always @ (negedge aclk or negedge rstn) begin : reg_update
+    reg go_swmod_prev;
+    reg aclk_gated_en_prev;
+
+    always @ (posedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
             aclk_gated_en <= '0;
         end
         else begin
-            if (hwif_out.clock_control.go.value && !aclk_gated_en)
+            if (go_swmod_prev && !aclk_gated_en)
             begin
                 aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value - 1;
                 aclk_gated_en <= 1'b1;
@@ -143,6 +146,8 @@ module caliptra_fpga_sync_top
             else begin
                 aclk_gated_en <= '0;
             end
+            go_swmod_prev <= hwif_out.clock_control.go.swmod;
+            aclk_gated_en_prev <= aclk_gated_en;
         end
     end
 
