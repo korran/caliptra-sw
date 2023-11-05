@@ -127,7 +127,7 @@ module caliptra_fpga_sync_top
     reg go_swmod_prev;
     reg aclk_gated_en_prev;
 
-    always @ (posedge aclk or negedge rstn) begin : reg_update
+    always @ (negedge aclk or negedge rstn) begin : reg_update
         if (!rstn) begin
             aclk_gated_en <= '0;
         end
