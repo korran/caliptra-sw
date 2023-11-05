@@ -132,12 +132,12 @@ module caliptra_fpga_sync_top
             aclk_gated_en <= '0;
         end
         else begin
-            if (go_swmod_prev && !aclk_gated_en)
+            if (go_swmod_prev && hwif_out.clock_control.go.value && !aclk_gated_en)
             begin
                 aclk_gated_cycle_count <= hwif_out.clock_control.cycle_count.value - 1;
                 aclk_gated_en <= 1'b1;
             end
-            else if (aclk_gated_cycle_count > 0) begin
+            else if (aclk_gated_cycle_count > 0 && aclk_gated_en) begin
                 if (bkpt_generic_output_wires || bkpt_mailbox_data_avail || bkpt_mailbox_flow_done || bkpt_etrng_req) 
                     aclk_gated_en <= 0;
                 else 
