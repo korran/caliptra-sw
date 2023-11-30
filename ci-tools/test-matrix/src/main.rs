@@ -6,7 +6,8 @@ use std::{
 };
 
 use nextest_metadata::TestListSummary;
-use octocrab::{etag::Etagged, params::actions::ArchiveFormat, Octocrab, Page};
+use octocrab::{etag::Etagged, params::actions::ArchiveFormat, Octocrab, Page, models::workflows::Run};
+use serde::Serialize;
 use zip::result::ZipError;
 
 mod html;
@@ -168,6 +169,20 @@ impl TestRun {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Serialize)]
+pub struct RunInfo {
+    pub id: String,
+    pub display_name: String,
+}
+impl RunInfo {
+    fn from_run(run: &Run) -> Self {
+        RunInfo { 
+            id: run.created_at.format("%F-%H%M%S").to_string(),
+            display_name: run.created_at.format("%F %H:%M:%S").to_string(),
+        }
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(dir) = std::env::var("CPTRA_MATRIX_ARTIFACTS_DIR") {
@@ -185,7 +200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let matrix = TestMatrix::new(test_runs).unwrap();
-        print!("{}", html::format(&matrix));
+        //print!("{}", html::format(&matrix));
         return Ok(());
     }
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
@@ -198,7 +213,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .list_runs("nightly-release.yml")
         .send()
         .await?;
-    for run in release_runs {
+    
+    const NUM_RUNS: usize = 3;
+
+    let run_infos: Vec<RunInfo> = release_runs.items.iter().take(3).map(RunInfo::from_run).collect();
+
+    for run in release_runs.into_iter().take(NUM_RUNS) {
         let artifacts = all_items(
             &octocrab,
             octocrab
@@ -221,8 +241,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let matrix = TestMatrix::new(test_runs).unwrap();
-        print!("{}", html::format(&matrix));
-        break;
+        let html = html::format(&run, &run_infos, &matrix);
+        std::fs::write(format!("/tmp/website/run-{}.html", RunInfo::from_run(&run).id), html).unwrap();
     }
 
     Ok(())

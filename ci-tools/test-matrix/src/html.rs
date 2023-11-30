@@ -1,18 +1,49 @@
 use std::fmt::Write;
 
+use octocrab::models::workflows::Run;
 use serde::Serialize;
 use tinytemplate::{TinyTemplate, format_unescaped};
+use std::fmt::Debug;
 
-use crate::TestMatrix;
+use crate::{TestMatrix, RunInfo};
 
 #[derive(Serialize)]
 struct TemplateContext<'a> {
     pub matrix: &'a TestMatrix,
     pub javascript: &'static str,
     pub style: &'static str,
+    pub run: &'a Run,
+    pub run_infos: Vec<MaybeSelected<&'a RunInfo>>,
 }
 
-pub fn format(matrix: &TestMatrix) -> String {
+#[derive(Serialize)]
+pub struct MaybeSelected<T: Serialize> {
+    pub selected: bool,
+    pub value: T,
+}
+
+impl<'a, T: Serialize + PartialEq> MaybeSelected<&'a T> {
+    fn select(selected: &'a T, all: &'a [T]) -> Vec<Self> {
+        let mut result = vec![];
+        for val in all {
+            result.push(
+                MaybeSelected{
+                    selected: *val == *selected,
+                    value: val,
+                }
+            );
+        }
+        result
+    }
+}
+
+impl<'a, T: Serialize + Debug> Debug for MaybeSelected<&'a T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MaybeSelected").field("selected", &self.selected).field("value", &self.value).finish()
+    }
+}
+
+pub fn format(run: &Run, toc: &[RunInfo], matrix: &TestMatrix) -> String {
     let mut tt = TinyTemplate::new();
     tt.add_template("matrix", include_str!("html/matrix.html"))
         .unwrap();
@@ -45,9 +76,14 @@ pub fn format(matrix: &TestMatrix) -> String {
         }?;
         Ok(())
     });
+
+
+    let this_run_info = RunInfo::from_run(run);
     tt.render("index", &TemplateContext {
         matrix,
         javascript: include_str!("html/matrix.js"),
         style: include_str!("html/style.css"),
+        run: run,
+        run_infos: MaybeSelected::select(&this_run_info, toc),
     }).unwrap()
 }

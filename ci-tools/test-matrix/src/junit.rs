@@ -30,14 +30,17 @@ pub struct TestSuite {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Skipped {
+    #[serde(default)]
     pub message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Error {
     #[serde(rename = "type")]
+    #[serde(default)]
     pub ty: String,
 
+    #[serde(default)]
     pub message: String,
 }
 
