@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Caliptra test matrix</title>
+    <style>
+      {style | format_unescaped}
+    </style>
+
+  </head>
+  <body>
+    <div id="root-menu">
+      <ul>
+      {{ for run_info in run_infos }}
+        {{ if run_info.selected }}
+          <li><strong>{run_info.value.display_name}</strong></li>
+        {{ else }}
+          <li><a href="run-{run_info.value.id}.html">{run_info.value.display_name}</a></li>
+        {{ endif }}
+      {{ endfor }}
+      </ul>
+    </div>
+    <div id="root-header">
+      Git commit: <a href="https://github.com/chipsalliance/caliptra-sw/commits/{run.head_sha}">{run.head_sha}</a><br>
+      Workflow Run: <a href="https://github.com/chipsalliance/caliptra-sw/actions/runs/{run.id}">{run.id}</a>
+      Branch: {run.head_branch}
+    </div>
+    </table>
+    {{ call matrix with matrix }}
+    <script>
+      {javascript | format_unescaped}
+    </script>
+  </body>
+</html>
