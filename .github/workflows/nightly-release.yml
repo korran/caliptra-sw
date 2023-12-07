@@ -2,6 +2,7 @@ name: Nightly Release
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
   # 2:11 AM PST tuesday-saturday
   - cron: '11 10 * * 2-6'
@@ -12,10 +13,12 @@ permissions:
 jobs:
   rtl-repo-sync:
     name: RTL Repo Sync
+    if: false
     uses: ./.github/workflows/rtl-repo-sync.yml
 
   find-latest-release:
     name: Find Latest Release
+    if: false
     needs: rtl-repo-sync
     runs-on: ubuntu-22.04
     outputs:
@@ -146,6 +149,7 @@ jobs:
 
   create-release:
     name: Create New Release
+    if: false
     needs:
       - find-latest-release
       - fpga-full-suite-etrng-log
