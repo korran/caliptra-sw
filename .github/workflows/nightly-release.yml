@@ -60,6 +60,11 @@ jobs:
           echo "release_ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "Current ref $(git rev-parse HEAD) will receive tag ${TAG_BASE}${INDEX} after tests"
 
+
+  publish-website:
+    name: Publish https://caliptra-sw.github.io/
+    uses: ./.github/workflows/publish-website.yml
+
   fpga-full-suite-etrng-log:
     name: FPGA Suite (etrng, log)
     needs: find-latest-release
@@ -143,6 +148,15 @@ jobs:
         run: |
           ./ci-tools/release/build_release.sh ${{ needs.find-latest-release.outputs.new_release_tag }}
           mv ./release/release.zip ./release/caliptra_${{ needs.find-latest-release.outputs.new_release_tag }}.zip
+
+      - name: 'Download all artifacts'
+        uses: actions/download-artifact@v3
+        with:
+          path: /tmp/artifacts
+
+      - name: Package all test artifacts for release
+        run: |
+          (cd /tmp/artifacts && zip -r - .) > ./release/test_artifacts_${{ needs.find-latest-release.outputs.new_release_tag }}.zip
 
       - name: Tag repo with new release number
         run: |
