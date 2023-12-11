@@ -3,6 +3,7 @@ use std::{
     collections::BTreeMap,
     error::Error,
     io::{Cursor, Read},
+    path::Path,
 };
 
 use nextest_metadata::TestListSummary;
@@ -185,24 +186,7 @@ impl RunInfo {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Ok(dir) = std::env::var("CPTRA_MATRIX_ARTIFACTS_DIR") {
-        let mut test_runs = vec![];
-        for entry in std::fs::read_dir(dir).unwrap() {
-            let Ok(entry) = entry else {
-                continue;
-            };
-            let file_name = entry.file_name().into_string().unwrap();
-            if file_name.starts_with("caliptra-test-results") {
-                let test_run_name = &file_name["caliptra-test-results-".len()..];
-                let artifact_zip = std::fs::read(entry.path()).unwrap();
-                test_runs
-                    .push(TestRun::from_zip_bytes(test_run_name.into(), &artifact_zip).unwrap());
-            }
-        }
-        let matrix = TestMatrix::new(test_runs).unwrap();
-        //print!("{}", html::format(&matrix));
-        return Ok(());
-    }
+    let www_out = std::env::var("CPTRA_WWW_OUT").unwrap();
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
     const ORG: &str = "chipsalliance";
     const REPO: &str = "caliptra-sw";
@@ -211,14 +195,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let release_runs = octocrab
         .workflows(ORG, REPO)
         .list_runs("nightly-release.yml")
+        .branch("main")
         .send()
         .await?;
     
     const NUM_RUNS: usize = 3;
 
-    let run_infos: Vec<RunInfo> = release_runs.items.iter().take(3).map(RunInfo::from_run).collect();
+    let run_infos: Vec<RunInfo> = release_runs.items.iter().take(NUM_RUNS).map(RunInfo::from_run).collect();
 
-    for run in release_runs.into_iter().take(NUM_RUNS) {
+    for (index, run) in release_runs.into_iter().take(NUM_RUNS).enumerate() {
         let artifacts = all_items(
             &octocrab,
             octocrab
@@ -242,7 +227,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let matrix = TestMatrix::new(test_runs).unwrap();
         let html = html::format(&run, &run_infos, &matrix);
-        std::fs::write(format!("/tmp/website/run-{}.html", RunInfo::from_run(&run).id), html).unwrap();
+        std::fs::write(Path::new(&www_out).join(format!("run-{}.html", RunInfo::from_run(&run).id)), &html).unwrap();
+        if index == 0 {
+            std::fs::write(Path::new(&www_out).join("index.html"), &html).unwrap();
+        }
     }
 
     Ok(())

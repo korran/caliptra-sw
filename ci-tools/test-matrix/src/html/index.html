@@ -19,13 +19,14 @@
       {{ endfor }}
       </ul>
     </div>
+    <div id="root-main">
     <div id="root-header">
       Git commit: <a href="https://github.com/chipsalliance/caliptra-sw/commits/{run.head_sha}">{run.head_sha}</a><br>
-      Workflow Run: <a href="https://github.com/chipsalliance/caliptra-sw/actions/runs/{run.id}">{run.id}</a>
+      Workflow Run: <a href="https://github.com/chipsalliance/caliptra-sw/actions/runs/{run.id}">{run.id}</a><br>
       Branch: {run.head_branch}
     </div>
-    </table>
     {{ call matrix with matrix }}
+    </div>
     <script>
       {javascript | format_unescaped}
     </script>

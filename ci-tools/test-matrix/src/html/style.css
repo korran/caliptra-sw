@@ -1,8 +1,21 @@
 body {
     font-family: "Segoe UI","Noto Sans",sans-serif;
     font-size: var(--body-font-size, 14px);
+    display: flex;
+    flex-direction: row;
+}
+#root-menu ul {
+    list-style: none outside none;
+    padding: 0;
+    margin: 0;
+    margin-right: 6px;
+    white-space: nowrap;
 }
 
+#root-menu li + li {
+    margin-top: 4px;
+}
+    
 table.caliptra-test-matrix td {
     padding: 3px 3px 3px 4px;
 }
